@@ -1,0 +1,412 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Schema Reference"
+  description="Complete reference for the clip.yaml schema format — all fields, types, and validation rules."
+>
+  <div class="docs-prose">
+    <p class="lead">
+      Complete reference for the <code>clip.yaml</code> schema format. This file
+      is the single source of truth for your generated CLI.
+    </p>
+
+    <h2 id="top-level">Top-Level Fields</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>name</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>Human-readable project name (e.g. <code>"Todo API"</code>)</td>
+          </tr>
+          <tr>
+            <td><code>alias</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>CLI command name. Must match <code>/^[a-z][a-z0-9-]*$/</code></td>
+          </tr>
+          <tr>
+            <td><code>version</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>Semver version string (e.g. <code>"1.0.0"</code>)</td>
+          </tr>
+          <tr>
+            <td><code>baseUrl</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>Base URL for all API requests</td>
+          </tr>
+          <tr>
+            <td><code>auth</code></td>
+            <td><code>AuthConfig</code></td>
+            <td>Yes</td>
+            <td>Authentication configuration</td>
+          </tr>
+          <tr>
+            <td><code>endpoints</code></td>
+            <td><code>Endpoint[]</code></td>
+            <td>Yes</td>
+            <td>Array of endpoint definitions (minimum 1)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="auth">Auth Configuration</h2>
+    <p>
+      The <code>auth</code> object configures how the generated CLI authenticates
+      with your API.
+    </p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>type</code></td>
+            <td><code>"header"</code></td>
+            <td>Auth method. Currently only <code>header</code> is supported.</td>
+          </tr>
+          <tr>
+            <td><code>headerName</code></td>
+            <td><code>string</code></td>
+            <td>HTTP header name (e.g. <code>"X-API-Key"</code>, <code>"Authorization"</code>)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <pre><code>{`auth:
+  type: header
+  headerName: "X-API-Key"`}</code></pre>
+
+    <h2 id="endpoints">Endpoints</h2>
+    <p>
+      Each entry in the <code>endpoints</code> array defines one CLI command.
+    </p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>name</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>Command name. Must be unique, match <code>/^[a-z][a-z0-9-]*$/</code></td>
+          </tr>
+          <tr>
+            <td><code>method</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>HTTP method: <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code></td>
+          </tr>
+          <tr>
+            <td><code>path</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>URL path. Supports <code>:param</code> placeholders</td>
+          </tr>
+          <tr>
+            <td><code>description</code></td>
+            <td><code>string</code></td>
+            <td>Yes</td>
+            <td>Shown in CLI <code>--help</code> output</td>
+          </tr>
+          <tr>
+            <td><code>params</code></td>
+            <td><code>ParamsConfig</code></td>
+            <td>No</td>
+            <td>Parameter definitions (path, query, body)</td>
+          </tr>
+          <tr>
+            <td><code>response</code></td>
+            <td><code>ResponseSchema</code></td>
+            <td>No</td>
+            <td>Expected response shape for test validation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="params">Parameters</h2>
+    <p>
+      The <code>params</code> object has three optional keys, each mapping
+      parameter names to their definitions:
+    </p>
+    <ul>
+      <li><code>path</code> — URL path parameters (must match <code>:param</code> placeholders). Become positional CLI arguments.</li>
+      <li><code>query</code> — Query string parameters. Become <code>--flag</code> options.</li>
+      <li><code>body</code> — JSON body fields. Become <code>--flag</code> options.</li>
+    </ul>
+
+    <h3>ParamDef</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>type</code></td>
+            <td><code>"string" | "number" | "boolean" | "array"</code></td>
+            <td>Parameter type (required)</td>
+          </tr>
+          <tr>
+            <td><code>required</code></td>
+            <td><code>boolean</code></td>
+            <td>Default <code>false</code>. Required params use <code>requiredOption()</code> in Commander</td>
+          </tr>
+          <tr>
+            <td><code>description</code></td>
+            <td><code>string</code></td>
+            <td>Shown in CLI help</td>
+          </tr>
+          <tr>
+            <td><code>items</code></td>
+            <td><code>ParamDef</code></td>
+            <td>Required when <code>type: "array"</code></td>
+          </tr>
+          <tr>
+            <td><code>enum</code></td>
+            <td><code>(string | number)[]</code></td>
+            <td>Restrict to allowed values</td>
+          </tr>
+          <tr>
+            <td><code>nullable</code></td>
+            <td><code>boolean</code></td>
+            <td>Default <code>false</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="response">Response Schema</h2>
+    <p>
+      Defines the expected shape of API responses. Used by auto-generated tests
+      to validate response structure.
+    </p>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Type</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>type</code></td>
+            <td><code>"object" | "array" | "string" | "number" | "boolean"</code></td>
+            <td>Response type (required)</td>
+          </tr>
+          <tr>
+            <td><code>properties</code></td>
+            <td><code>Record&lt;string, PropertyDef&gt;</code></td>
+            <td>Required when <code>type: "object"</code></td>
+          </tr>
+          <tr>
+            <td><code>items</code></td>
+            <td><code>ResponseSchema</code></td>
+            <td>Required when <code>type: "array"</code> (recursive)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <strong>PropertyDef</strong> can be a shorthand string (<code>"string"</code>,
+      <code>"number"</code>, <code>"boolean"</code>) or a nested <code>ResponseSchema</code>
+      for complex types.
+    </p>
+
+    <h2 id="validation">Validation Rules</h2>
+    <p>
+      clip validates your schema beyond structural correctness:
+    </p>
+    <ul>
+      <li>Endpoint names must be <strong>unique</strong></li>
+      <li>Every <code>:param</code> in <code>path</code> must have a matching key in <code>params.path</code></li>
+      <li>No orphan path params — nothing in <code>params.path</code> that isn't in the URL</li>
+      <li>No duplicate <code>method + path</code> combinations</li>
+    </ul>
+
+    <h2 id="full-example">Full Example</h2>
+    <pre><code>{`name: "Todo API"
+alias: todo
+version: "1.0.0"
+baseUrl: "http://localhost:3000"
+auth:
+  type: header
+  headerName: "X-API-Key"
+endpoints:
+  - name: list
+    method: GET
+    path: /todos
+    description: "List all todos"
+    response:
+      type: array
+      items:
+        type: object
+        properties:
+          id: string
+          title: string
+          completed: boolean
+
+  - name: create
+    method: POST
+    path: /todos
+    description: "Create a new todo"
+    params:
+      body:
+        title:
+          type: string
+          required: true
+    response:
+      type: object
+      properties:
+        id: string
+        title: string
+        completed: boolean
+
+  - name: get
+    method: GET
+    path: "/todos/:id"
+    description: "Get a todo by ID"
+    params:
+      path:
+        id:
+          type: string
+          required: true
+
+  - name: update
+    method: PATCH
+    path: "/todos/:id"
+    description: "Update a todo"
+    params:
+      path:
+        id:
+          type: string
+          required: true
+      body:
+        title:
+          type: string
+        completed:
+          type: boolean
+
+  - name: delete
+    method: DELETE
+    path: "/todos/:id"
+    description: "Delete a todo"
+    params:
+      path:
+        id:
+          type: string
+          required: true`}</code></pre>
+  </div>
+</DocsLayout>
+
+<style>
+  .docs-prose {
+    line-height: 1.7;
+  }
+
+  .docs-prose .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-xl);
+  }
+
+  .docs-prose h2 {
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .docs-prose h2:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .docs-prose h3 {
+    margin-top: var(--space-lg);
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose p {
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose pre {
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose ul {
+    list-style: disc;
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose li {
+    margin-bottom: var(--space-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin-bottom: var(--space-lg);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 2px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  td code {
+    font-size: 0.8125rem;
+  }
+</style>

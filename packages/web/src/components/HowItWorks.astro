@@ -1,0 +1,149 @@
+---
+// biome-ignore lint/correctness/noUnusedVariables: used in Astro template
+const steps = [
+  {
+    number: "01",
+    title: "Define",
+    description:
+      "Write a clip.yaml file describing your API endpoints, authentication, and response shapes.",
+    code: `# clip.yaml
+name: todo
+version: "1.0"
+base_url: https://api.todo.app
+auth:
+  type: bearer
+endpoints:
+  - name: list
+    method: GET
+    path: /todos
+    response:
+      type: array
+      items: { id: string, title: string, completed: boolean }`,
+  },
+  {
+    number: "02",
+    title: "Generate",
+    description:
+      "Run a single command to generate your CLI tool with full type safety and tests.",
+    code: `$ clip generate
+✓ Parsed clip.yaml (5 endpoints)
+✓ Generated CLI "todo" in .clip-output/todo/
+✓ Generated 5 test cases
+
+$ clip install
+✓ Installed "todo" command globally`,
+  },
+  {
+    number: "03",
+    title: "Use",
+    description:
+      "Run commands directly in your terminal. Auth is injected automatically.",
+    code: `$ todo list
+[{"id": "1", "title": "Buy milk", "completed": false}]
+
+$ todo create --title "Write docs" --completed false
+{"id": "2", "title": "Write docs", "completed": false}
+
+$ todo test
+✓ GET /todos — 200, shape valid
+✓ POST /todos — 201, shape valid
+5/5 tests passed`,
+  },
+];
+---
+
+<section class="how-it-works">
+  <div class="how-inner">
+    <h2 class="how-heading">How it works</h2>
+    <p class="how-subheading">Three steps. Zero boilerplate.</p>
+    <div class="steps">
+      {
+        steps.map((step) => (
+          <div class="step">
+            <div class="step-info">
+              <span class="step-number">{step.number}</span>
+              <h3 class="step-title">{step.title}</h3>
+              <p class="step-description">{step.description}</p>
+            </div>
+            <div class="step-code">
+              <pre><code>{step.code}</code></pre>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .how-it-works {
+    padding: calc(var(--space-xl) * 1.5) 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .how-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+  }
+
+  .how-heading {
+    text-align: center;
+    margin-bottom: var(--space-sm);
+  }
+
+  .how-subheading {
+    text-align: center;
+    font-size: 1.0625rem;
+    color: var(--color-text-secondary);
+    margin-bottom: calc(var(--space-xl) * 1.5);
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-xl) * 1.5);
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+
+  .step-number {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-accent);
+    background: rgba(99, 102, 241, 0.1);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    margin-bottom: var(--space-md);
+  }
+
+  .step-title {
+    color: var(--color-text);
+    font-size: 1.5rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .step-description {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .step-code pre {
+    font-size: 0.8125rem;
+    line-height: 1.7;
+  }
+
+  @media (max-width: 768px) {
+    .step {
+      grid-template-columns: 1fr;
+      gap: var(--space-lg);
+    }
+  }
+</style>

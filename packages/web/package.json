@@ -8,5 +8,8 @@
     "build": "astro build",
     "preview": "astro preview"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "dependencies": {
+    "astro": "^6.1.6"
+  }
 }

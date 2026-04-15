@@ -1,7 +1,9 @@
 ---
-const _currentPath = Astro.url.pathname;
+// biome-ignore lint/correctness/noUnusedVariables: used in Astro template
+const currentPath = Astro.url.pathname;
 
-const _links = [
+// biome-ignore lint/correctness/noUnusedVariables: used in Astro template
+const links = [
   { href: "/docs/", label: "Getting Started" },
   { href: "/docs/schema/", label: "Schema Reference" },
   { href: "/docs/cli/", label: "CLI Reference" },

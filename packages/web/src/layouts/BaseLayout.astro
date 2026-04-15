@@ -1,4 +1,8 @@
 ---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template
+import Footer from "../components/Footer.astro";
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template
+import Header from "../components/Header.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -25,7 +29,7 @@ const pageTitle = `${title} — clip`;
     <meta name="description" content={description} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image" content="/og-image.svg" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href={Astro.url.href} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

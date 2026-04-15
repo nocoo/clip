@@ -1,0 +1,245 @@
+---
+---
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">Open Source CLI Generator</div>
+    <h1 class="hero-title">
+      Turn your API schema into a CLI
+      <span class="hero-gradient">in seconds</span>
+    </h1>
+    <p class="hero-subtitle">
+      Define your API in YAML. clip generates a fully working CLI tool and test
+      suite.
+    </p>
+    <div class="hero-actions">
+      <a href="/docs/" class="btn btn-primary">Get Started</a>
+      <a
+        href="https://github.com/user/clip"
+        class="btn btn-secondary"
+        target="_blank"
+        rel="noopener noreferrer">View on GitHub</a
+      >
+    </div>
+
+    <div class="hero-terminal">
+      <div class="terminal-header">
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-title">terminal</span>
+      </div>
+      <div class="terminal-body">
+        <pre><code><span class="t-prompt">$</span> <span class="t-cmd">clip generate</span>
+<span class="t-success">✓</span> Parsed clip.yaml (5 endpoints)
+<span class="t-success">✓</span> Generated CLI "todo" in .clip-output/todo/
+
+<span class="t-prompt">$</span> <span class="t-cmd">clip install</span>
+<span class="t-success">✓</span> Installed "todo" command globally
+
+<span class="t-prompt">$</span> <span class="t-cmd">todo list</span>
+<span class="t-output">[{`{`}"id": "1", "title": "Buy milk", "completed": false{`}`}]</span></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding: calc(var(--space-xl) * 2) 0 var(--space-xl);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(
+      circle,
+      rgba(99, 102, 241, 0.08) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+    position: relative;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-accent);
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: 999px;
+    margin-bottom: var(--space-lg);
+  }
+
+  .hero-title {
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--color-text);
+    max-width: 720px;
+    margin: 0 auto var(--space-lg);
+  }
+
+  .hero-gradient {
+    background: linear-gradient(135deg, #6366f1, #a78bfa, #6366f1);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    max-width: 540px;
+    margin: 0 auto var(--space-xl);
+    line-height: 1.6;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    margin-bottom: calc(var(--space-xl) * 1.5);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-accent-hover);
+    color: white;
+  }
+
+  .btn-secondary {
+    background: var(--color-bg-elevated);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-bg-secondary);
+    border-color: var(--color-text-secondary);
+    color: var(--color-text);
+  }
+
+  .hero-terminal {
+    max-width: 600px;
+    margin: 0 auto;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    overflow: hidden;
+    text-align: left;
+    background: var(--color-code-bg);
+  }
+
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-border);
+  }
+
+  .terminal-title {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .terminal-body {
+    padding: var(--space-md);
+  }
+
+  .terminal-body pre {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.8125rem;
+  }
+
+  .t-prompt {
+    color: var(--color-text-secondary);
+  }
+
+  .t-cmd {
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+
+  .t-success {
+    color: #22c55e;
+  }
+
+  .t-output {
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding: var(--space-xl) 0;
+    }
+
+    .hero-title {
+      font-size: 2.25rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.0625rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .btn {
+      width: 100%;
+      max-width: 280px;
+      justify-content: center;
+    }
+
+    .hero-terminal {
+      margin: 0 -var(--space-md);
+    }
+  }
+</style>
