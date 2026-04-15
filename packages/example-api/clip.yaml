@@ -1,0 +1,58 @@
+name: "Todo API"
+alias: todo
+version: "1.0.0"
+baseUrl: "http://localhost:3456"
+auth:
+  type: header
+  headerName: "X-API-Key"
+endpoints:
+  - name: list
+    method: GET
+    path: /todos
+    description: "List all todos"
+    response:
+      type: array
+      items: { type: object, properties: { id: string, title: string, completed: boolean } }
+  - name: create
+    method: POST
+    path: /todos
+    description: "Create a new todo"
+    params:
+      body:
+        title: { type: string, required: true }
+    response:
+      type: object
+      properties: { id: string, title: string, completed: boolean }
+  - name: get
+    method: GET
+    path: "/todos/:id"
+    description: "Get a todo by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+    response:
+      type: object
+      properties: { id: string, title: string, completed: boolean }
+  - name: update
+    method: PATCH
+    path: "/todos/:id"
+    description: "Update a todo"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        title: { type: string }
+        completed: { type: boolean }
+    response:
+      type: object
+      properties: { id: string, title: string, completed: boolean }
+  - name: delete
+    method: DELETE
+    path: "/todos/:id"
+    description: "Delete a todo"
+    params:
+      path:
+        id: { type: string, required: true }
+    response:
+      type: object
+      properties: { deleted: boolean }

@@ -1,0 +1,252 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="CLI Reference"
+  description="Reference for all clip CLI commands — generate, install, auth, and test."
+>
+  <div class="docs-prose">
+    <p class="lead">
+      Reference for all clip commands. Each command includes its usage,
+      options, and examples.
+    </p>
+
+    <h2 id="generate">clip generate</h2>
+    <p>Parse a <code>clip.yaml</code> schema and generate a complete CLI project.</p>
+    <pre><code>clip generate [--schema &lt;path&gt;] [--output &lt;dir&gt;]</code></pre>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--schema &lt;path&gt;</code></td>
+            <td><code>./clip.yaml</code></td>
+            <td>Path to the schema file</td>
+          </tr>
+          <tr>
+            <td><code>--output &lt;dir&gt;</code></td>
+            <td><code>.clip-output/&lt;alias&gt;/</code></td>
+            <td>Output directory for the generated project</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Example</h3>
+    <pre><code>{`$ clip generate
+✓ Parsed clip.yaml (5 endpoints)
+✓ Generated CLI "todo" in .clip-output/todo/
+
+$ clip generate --schema api.yaml --output ./my-cli
+✓ Parsed api.yaml (3 endpoints)
+✓ Generated CLI "myapp" in ./my-cli/`}</code></pre>
+    <p>
+      The generated project includes a Commander.js-based CLI with argument
+      parsing, an HTTP client with auth injection, and TypeScript types.
+    </p>
+
+    <h2 id="install">clip install</h2>
+    <p>Generate the CLI and install it globally via <code>bun link</code>.</p>
+    <pre><code>clip install [--schema &lt;path&gt;]</code></pre>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--schema &lt;path&gt;</code></td>
+            <td><code>./clip.yaml</code></td>
+            <td>Path to the schema file</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Example</h3>
+    <pre><code>{`$ clip install
+✓ Parsed clip.yaml (5 endpoints)
+✓ Generated CLI "todo" in .clip-output/todo/
+✓ Installed "todo" command globally`}</code></pre>
+    <p>
+      After installation, the generated CLI is available as a global command.
+      Run <code>todo --help</code> to see available commands.
+    </p>
+
+    <h2 id="test">clip test</h2>
+    <p>Run auto-generated tests against a live API to validate response shapes.</p>
+    <pre><code>clip test &lt;alias&gt;</code></pre>
+    <h3>Example</h3>
+    <pre><code>{`$ clip test todo
+✓ GET /todos — 200, shape valid
+✓ POST /todos — 201, shape valid
+✓ GET /todos/:id — 200, shape valid
+✓ PATCH /todos/:id — 200, shape valid
+✓ DELETE /todos/:id — 200, shape valid
+5/5 tests passed`}</code></pre>
+    <p>
+      Tests are generated from the <code>response</code> schema defined for each
+      endpoint. Each test validates that the API returns the expected HTTP status
+      and that the response body matches the defined shape.
+    </p>
+
+    <h2 id="auth-set">clip auth set</h2>
+    <p>Store API credentials for a generated CLI.</p>
+    <pre><code>clip auth set &lt;alias&gt; [--key &lt;value&gt;] [--header &lt;name&gt;]</code></pre>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--key &lt;value&gt;</code></td>
+            <td>API key value. If omitted, prompts interactively with hidden input.</td>
+          </tr>
+          <tr>
+            <td><code>--header &lt;name&gt;</code></td>
+            <td>Header name override. If omitted, reads from <code>clip.yaml</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Example</h3>
+    <pre><code>{`$ clip auth set todo --key "sk-abc123"
+✓ Credentials saved for "todo"
+
+$ clip auth set todo
+Enter API key: ••••••••
+✓ Credentials saved for "todo"`}</code></pre>
+    <p>
+      Credentials are stored in <code>~/.clip/&lt;alias&gt;/credentials.json</code>
+      with restricted permissions (<code>0600</code>). The credential value is
+      never logged to stdout or stderr.
+    </p>
+
+    <h2 id="auth-show">clip auth show</h2>
+    <p>Display stored credentials for an alias (values are masked).</p>
+    <pre><code>clip auth show &lt;alias&gt;</code></pre>
+    <h3>Example</h3>
+    <pre><code>{`$ clip auth show todo
+Alias:  todo
+Header: X-API-Key
+Value:  sk-ab****23
+Path:   ~/.clip/todo/credentials.json`}</code></pre>
+
+    <h2 id="auth-remove">clip auth remove</h2>
+    <p>Delete stored credentials for an alias.</p>
+    <pre><code>clip auth remove &lt;alias&gt;</code></pre>
+    <h3>Example</h3>
+    <pre><code>{`$ clip auth remove todo
+Remove credentials for "todo"? (y/N) y
+✓ Credentials removed for "todo"`}</code></pre>
+    <p>
+      Prompts for confirmation before deleting. Removes the entire credential
+      directory for the alias.
+    </p>
+
+    <h2 id="env">Environment Variables</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>CLIP_HOME</code></td>
+            <td>Override credential storage directory (default: <code>~/.clip</code>)</td>
+          </tr>
+          <tr>
+            <td><code>CLIP_BASE_URL</code></td>
+            <td>Override the <code>baseUrl</code> from <code>clip.yaml</code> at runtime</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</DocsLayout>
+
+<style>
+  .docs-prose {
+    line-height: 1.7;
+  }
+
+  .docs-prose .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-xl);
+  }
+
+  .docs-prose h2 {
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .docs-prose h2:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .docs-prose h3 {
+    margin-top: var(--space-lg);
+    margin-bottom: var(--space-sm);
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+  }
+
+  .docs-prose p {
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose pre {
+    margin-bottom: var(--space-md);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    margin-bottom: var(--space-lg);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 2px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  td code {
+    font-size: 0.8125rem;
+  }
+</style>
