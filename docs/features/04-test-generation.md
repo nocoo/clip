@@ -172,7 +172,7 @@ clip test <alias> [--base-url <url>] [--api-key <key>]
 1. Resolve the generated output directory: `.clip-output/<alias>/`
 2. Load metadata from `.clip-output/<alias>/clip-metadata.json` (written during `clip generate`)
 3. Verify tests exist (if not, suggest running `clip generate` first)
-4. Load credentials from `~/.clip/<alias>/credentials.json` for the API key
+4. Load credentials via `loadCredentials(alias)` (resolves `$CLIP_HOME/<alias>/credentials.json`, where `CLIP_HOME` defaults to `~/.clip`)
 5. Set environment variables:
    - `CLIP_TEST_BASE_URL` — from `--base-url` flag, or `CLIP_BASE_URL` env, or metadata's `baseUrl`
    - `CLIP_TEST_API_KEY` — from `--api-key` flag or stored credentials
@@ -254,7 +254,7 @@ Generated tests read configuration from environment variables, making them flexi
 | Variable | Source | Fallback |
 |----------|--------|----------|
 | `CLIP_TEST_BASE_URL` | `--base-url` flag | `CLIP_BASE_URL` env → metadata `baseUrl` |
-| `CLIP_TEST_API_KEY` | `--api-key` flag | `~/.clip/<alias>/credentials.json` |
+| `CLIP_TEST_API_KEY` | `--api-key` flag | `loadCredentials(alias)` → `$CLIP_HOME/<alias>/credentials.json` |
 
 ### Generated `package.json` Test Script
 
