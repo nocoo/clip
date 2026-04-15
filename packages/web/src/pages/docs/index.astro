@@ -1,0 +1,183 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Getting Started"
+  description="Install clip and generate your first CLI from a YAML schema in under 5 minutes."
+>
+  <div class="docs-prose">
+    <p class="lead">
+      Get up and running with clip in under 5 minutes. You'll go from a YAML
+      schema to a working CLI tool.
+    </p>
+
+    <h2 id="install">1. Install clip</h2>
+    <p>Install the clip CLI globally using Bun:</p>
+    <pre><code>bun install -g @clip/cli</code></pre>
+    <p>Verify the installation:</p>
+    <pre><code>clip --version</code></pre>
+
+    <h2 id="create-schema">2. Create a schema</h2>
+    <p>
+      Create a <code>clip.yaml</code> file in your project directory. This file describes
+      your API — its base URL, authentication, and endpoints.
+    </p>
+    <pre><code>{`name: "Todo API"
+alias: todo
+version: "1.0.0"
+baseUrl: "http://localhost:3000"
+auth:
+  type: header
+  headerName: "X-API-Key"
+endpoints:
+  - name: list
+    method: GET
+    path: /todos
+    description: "List all todos"
+    response:
+      type: array
+      items:
+        type: object
+        properties:
+          id: string
+          title: string
+          completed: boolean
+
+  - name: create
+    method: POST
+    path: /todos
+    description: "Create a new todo"
+    params:
+      body:
+        title:
+          type: string
+          required: true
+    response:
+      type: object
+      properties:
+        id: string
+        title: string
+        completed: boolean`}</code></pre>
+    <p>
+      See the <a href="/docs/schema/">Schema Reference</a> for the complete list
+      of fields and options.
+    </p>
+
+    <h2 id="generate">3. Generate your CLI</h2>
+    <p>
+      Run <code>clip generate</code> to parse your schema and generate a
+      complete TypeScript CLI project:
+    </p>
+    <pre><code>{`$ clip generate
+✓ Parsed clip.yaml (2 endpoints)
+✓ Generated CLI "todo" in .clip-output/todo/`}</code></pre>
+    <p>
+      The generated project lives in <code>.clip-output/todo/</code> and
+      includes a fully working CLI with argument parsing, HTTP client, and type
+      validation.
+    </p>
+
+    <h2 id="auth">4. Set up auth</h2>
+    <p>Store your API credentials securely:</p>
+    <pre><code>{`$ clip auth set todo --key "your-api-key"
+✓ Credentials saved for "todo"`}</code></pre>
+    <p>
+      Credentials are stored in <code>~/.clip/todo/credentials.json</code> with
+      restricted file permissions (<code>0600</code>). The key value is never
+      logged.
+    </p>
+    <p>
+      If you omit <code>--key</code>, clip will prompt you interactively with
+      hidden input.
+    </p>
+
+    <h2 id="install-cli">5. Install globally</h2>
+    <p>Make your generated CLI available as a global command:</p>
+    <pre><code>{`$ clip install
+✓ Parsed clip.yaml (2 endpoints)
+✓ Generated CLI "todo" in .clip-output/todo/
+✓ Installed "todo" command globally`}</code></pre>
+    <p>
+      Now you can run <code>todo</code> from anywhere in your terminal.
+    </p>
+
+    <h2 id="use">6. Use your CLI</h2>
+    <p>Run commands just like any other CLI tool:</p>
+    <pre><code>{`$ todo list
+[{"id": "1", "title": "Buy milk", "completed": false}]
+
+$ todo create --title "Write docs"
+{"id": "2", "title": "Write docs", "completed": false}`}</code></pre>
+
+    <h2 id="test">7. Run tests</h2>
+    <p>
+      clip auto-generates tests for each endpoint. Run them to verify your API
+      responds correctly:
+    </p>
+    <pre><code>{`$ clip test todo
+✓ GET /todos — 200, shape valid
+✓ POST /todos — 201, shape valid
+2/2 tests passed`}</code></pre>
+
+    <h2 id="next-steps">Next steps</h2>
+    <ul>
+      <li>
+        <a href="/docs/schema/">Schema Reference</a> — full documentation for <code
+          >clip.yaml</code
+        >
+      </li>
+      <li>
+        <a href="/docs/cli/">CLI Reference</a> — all clip commands and options
+      </li>
+    </ul>
+  </div>
+</DocsLayout>
+
+<style>
+  .docs-prose {
+    line-height: 1.7;
+  }
+
+  .docs-prose .lead {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-xl);
+  }
+
+  .docs-prose h2 {
+    margin-top: var(--space-xl);
+    margin-bottom: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .docs-prose h2:first-of-type {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .docs-prose p {
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose pre {
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose ul {
+    list-style: disc;
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+  }
+
+  .docs-prose li {
+    margin-bottom: var(--space-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .docs-prose li a {
+    font-weight: 500;
+  }
+</style>
