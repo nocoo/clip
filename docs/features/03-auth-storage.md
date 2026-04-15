@@ -9,8 +9,10 @@ clip stores API authentication credentials locally on disk, one credentials file
 ### Location
 
 ```
-~/.clip/<alias>/credentials.json
+$CLIP_HOME/<alias>/credentials.json
 ```
+
+`CLIP_HOME` defaults to `~/.clip` when not set. Setting `CLIP_HOME` to a custom directory enables isolated testing.
 
 Example for `alias: todo`:
 ```
@@ -48,7 +50,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { chmod } from "fs/promises";
 
-const CLIP_DIR = join(homedir(), ".clip");
+const CLIP_DIR = process.env.CLIP_HOME || join(homedir(), ".clip");
 
 export interface Credentials {
   headerName: string;
@@ -61,10 +63,12 @@ export async function getCredentialsPath(alias: string): Promise<string> {
 
 export async function saveCredentials(alias: string, creds: Credentials): Promise<void> {
   const dir = join(CLIP_DIR, alias);
-  await mkdir(dir, { recursive: true, mode: 0o700 });
+  await mkdir(dir, { recursive: true });
+  await chmod(dir, 0o700);
 
   const filePath = join(dir, "credentials.json");
-  await writeFile(filePath, JSON.stringify(creds, null, 2), { mode: 0o600 });
+  await writeFile(filePath, JSON.stringify(creds, null, 2));
+  await chmod(filePath, 0o600);
 }
 
 export async function loadCredentials(alias: string): Promise<Credentials | null> {
@@ -100,11 +104,11 @@ export function maskValue(value: string): string {
 **Module**: `packages/cli/src/commands/auth.ts`
 
 ```
-clip auth set <alias> [--key <value>]
+clip auth set <alias> [--key <value>] [--header <name>]
 ```
 
 **Flow**:
-1. Check if `clip.yaml` exists (to read `auth.headerName`) or accept `--header` override
+1. Check if `clip.yaml` exists (to read `auth.headerName`) or accept `--header <name>` override
 2. If `--key` not provided, prompt interactively (hide input):
    ```
    Enter API key for "todo" (X-API-Key): ****
@@ -203,7 +207,7 @@ headers[config.headerName] = config.headerValue;
 - ✅ `auth show` handles missing credentials
 - ✅ `auth remove` deletes credentials after confirmation
 
-> **Note**: Tests use a temporary directory (`$TMPDIR/.clip-test/`) instead of the real `~/.clip/` to avoid side effects.
+> **Note**: Tests set `CLIP_HOME` to a temporary directory (`$TMPDIR/.clip-test/`) instead of using the real `~/.clip/` to avoid side effects.
 
 ### Atomic Commit Plan
 
