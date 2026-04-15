@@ -21,7 +21,7 @@ clip/
 │   │   │   │   └── types.ts          # TypeScript types derived from Zod schemas
 │   │   │   ├── codegen/
 │   │   │   │   ├── generator.ts      # AST → TypeScript source files
-│   │   │   │   ├── templates/        # Handlebars/template-literal templates
+│   │   │   │   ├── templates/        # Template-literal templates
 │   │   │   │   │   ├── index.ts.tpl
 │   │   │   │   │   ├── command.ts.tpl
 │   │   │   │   │   ├── client.ts.tpl

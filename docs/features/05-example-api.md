@@ -88,7 +88,6 @@ export interface Todo {
   id: string;
   title: string;
   completed: boolean;
-  createdAt: string;
 }
 
 class TodoStore {
@@ -108,7 +107,6 @@ class TodoStore {
       id,
       title,
       completed: false,
-      createdAt: new Date().toISOString(),
     };
     this.todos.set(id, todo);
     return todo;
@@ -272,6 +270,9 @@ endpoints:
     params:
       path:
         id: { type: string, required: true }
+    response:
+      type: object
+      properties: { deleted: boolean }
 ```
 
 ## 7. Integration Testing Flow
@@ -282,12 +283,12 @@ When `@clip/cli` integration tests run:
 1. Start example-api on random port
 2. Set API_KEY env variable
 3. Run: clip generate (using example-api/clip.yaml)
-4. Run: clip test todo --base-url http://localhost:<port> --api-key <key>
+4. Run: CLIP_BASE_URL=http://localhost:<port> clip test todo --api-key <key>
 5. Assert all tests pass
 6. Shut down example-api
 ```
 
-The random port prevents conflicts when tests run in parallel.
+The `CLIP_BASE_URL` environment variable overrides the baked-in `baseUrl` from the schema, enabling random-port integration testing without modifying generated code.
 
 ## 8. Files to Create/Modify
 

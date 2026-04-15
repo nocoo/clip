@@ -121,6 +121,9 @@ endpoints:
     params:
       path:
         id: { type: string, required: true }
+    response:
+      type: object
+      properties: { deleted: boolean }
 ```
 
 ## 4. Zod Validation Schema

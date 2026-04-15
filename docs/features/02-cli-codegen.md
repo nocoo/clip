@@ -143,7 +143,8 @@ interface RequestOptions {
 export const client = {
   async request(options: RequestOptions) {
     const config = await loadConfig();
-    const url = new URL(options.path, "${baseUrl}");
+    const baseUrl = process.env.CLIP_BASE_URL || "${baseUrl}";
+    const url = new URL(options.path, baseUrl);
 
     if (options.query) {
       for (const [key, value] of Object.entries(options.query)) {
@@ -155,9 +156,7 @@ export const client = {
       "Content-Type": "application/json",
     };
 
-    if (config) {
-      headers[config.headerName] = config.headerValue;
-    }
+    headers[config.headerName] = config.headerValue;
 
     const response = await fetch(url.toString(), {
       method: options.method,
@@ -188,13 +187,14 @@ interface Credentials {
   headerValue: string;
 }
 
-export async function loadConfig(): Promise<Credentials | null> {
+export async function loadConfig(): Promise<Credentials> {
   const credPath = join(homedir(), ".clip", "${alias}", "credentials.json");
   try {
     const raw = await readFile(credPath, "utf-8");
     return JSON.parse(raw) as Credentials;
   } catch {
-    return null;
+    console.error("No credentials found. Run: clip auth set ${alias}");
+    process.exit(1);
   }
 }
 ```
