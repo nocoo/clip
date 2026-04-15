@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-clip automatically generates a test suite alongside the CLI. Each API endpoint in the schema gets a corresponding test file that validates the endpoint is reachable, returns the correct status code, and the response body matches the declared schema shape.
+clip automatically generates a test suite alongside the CLI. Each API endpoint in the schema gets a corresponding test file that validates the endpoint is reachable, returns a successful response (2xx), and the response body matches the declared schema shape.
 
 ## 2. Generated Test Structure
 
@@ -37,7 +37,7 @@ ClipSchema AST
 │    request data       │
 │ 2. Build test that:   │
 │    a. Sends HTTP req  │
-│    b. Checks status   │
+│    b. Checks 2xx      │
 │    c. Validates shape │
 └──────────────────────┘
 ```
@@ -171,19 +171,46 @@ clip test <alias> [--base-url <url>] [--api-key <key>]
 ```
 
 **Flow**:
-1. Resolve the generated test directory: `.clip-output/<alias>/tests/`
-2. Verify tests exist (if not, suggest running `clip generate` first)
-3. Load credentials from `~/.clip/<alias>/credentials.json` for the API key
-4. Set environment variables:
-   - `CLIP_TEST_BASE_URL` — from `--base-url` flag or schema's `baseUrl`
+1. Resolve the generated output directory: `.clip-output/<alias>/`
+2. Load metadata from `.clip-output/<alias>/clip-metadata.json` (written during `clip generate`)
+3. Verify tests exist (if not, suggest running `clip generate` first)
+4. Load credentials from `~/.clip/<alias>/credentials.json` for the API key
+5. Set environment variables:
+   - `CLIP_TEST_BASE_URL` — from `--base-url` flag, or `CLIP_BASE_URL` env, or metadata's `baseUrl`
    - `CLIP_TEST_API_KEY` — from `--api-key` flag or stored credentials
-5. Run `bun test` in the generated output directory
-6. Report results
+6. Run `bun test` in the generated output directory
+7. Report results
+
+### Metadata File
+
+During `clip generate`, a `clip-metadata.json` file is written to `.clip-output/<alias>/`:
+
+```json
+{
+  "alias": "todo",
+  "baseUrl": "http://localhost:3456",
+  "auth": {
+    "type": "header",
+    "headerName": "X-API-Key"
+  },
+  "generatedAt": "2026-01-01T00:00:00.000Z"
+}
+```
+
+This file allows `clip test` to resolve configuration without re-parsing the schema.
 
 ```typescript
 // packages/cli/src/commands/test.ts
 import { spawn } from "bun";
+import { readFile } from "fs/promises";
 import { loadCredentials } from "../auth/storage";
+
+interface ClipMetadata {
+  alias: string;
+  baseUrl: string;
+  auth: { type: string; headerName: string };
+  generatedAt: string;
+}
 
 export async function testCommand(alias: string, options: TestOptions) {
   const outputDir = resolve(`.clip-output/${alias}`);
@@ -195,12 +222,16 @@ export async function testCommand(alias: string, options: TestOptions) {
     process.exit(1);
   }
 
+  // Load metadata
+  const metadataPath = join(outputDir, "clip-metadata.json");
+  const metadata: ClipMetadata = JSON.parse(await readFile(metadataPath, "utf-8"));
+
   // Load credentials
   const creds = await loadCredentials(alias);
 
   const env = {
     ...process.env,
-    CLIP_TEST_BASE_URL: options.baseUrl || schema.baseUrl,
+    CLIP_TEST_BASE_URL: options.baseUrl || process.env.CLIP_BASE_URL || metadata.baseUrl,
     CLIP_TEST_API_KEY: options.apiKey || creds?.headerValue || "",
   };
 
@@ -224,7 +255,7 @@ Generated tests read configuration from environment variables, making them flexi
 
 | Variable | Source | Fallback |
 |----------|--------|----------|
-| `CLIP_TEST_BASE_URL` | `--base-url` flag | Schema `baseUrl` |
+| `CLIP_TEST_BASE_URL` | `--base-url` flag | `CLIP_BASE_URL` env → metadata `baseUrl` |
 | `CLIP_TEST_API_KEY` | `--api-key` flag | `~/.clip/<alias>/credentials.json` |
 
 ### Generated `package.json` Test Script
@@ -239,11 +270,10 @@ Generated tests read configuration from environment variables, making them flexi
 
 ## 7. Test Ordering
 
-Some endpoints have natural dependencies (e.g., `create` before `get`, `get` before `delete`). The test generator handles this by:
+Resource-dependent endpoints (get, update, delete) require a previously created resource. The test generator handles this by making the **CRUD sequence test the primary test mode**:
 
-1. **Independent tests** — Each test is self-contained and creates its own test data
-2. **No shared state** — Tests do not depend on each other's side effects
-3. **CRUD sequence test** — An optional integration-style test that runs create → get → update → delete in sequence
+1. **CRUD sequence test** (primary) — Runs create → get → update → delete in sequence using a real created resource. This is always generated when the schema contains endpoints for these operations.
+2. **Independent endpoint tests** (optional) — Each test is self-contained with sample data. These are useful for endpoints that don't depend on prior state (e.g., `list`). For resource-dependent endpoints (get/update/delete), individual tests are **not generated** — use the CRUD sequence instead.
 
 The CRUD sequence test is generated as `tests/_crud-sequence.test.ts`:
 
@@ -279,6 +309,7 @@ describe("CRUD sequence", () => {
 |-----------|--------|---------|
 | `packages/cli/src/codegen/test-generator.ts` | Create | Test file generation from schema |
 | `packages/cli/src/commands/test.ts` | Create | `clip test` command |
+| `.clip-output/<alias>/clip-metadata.json` | Create (generated) | Metadata persisted during `clip generate` for use by `clip test` |
 | `packages/cli/tests/unit/codegen/test-generator.test.ts` | Create | Unit tests for test generation |
 
 ## 9. Test Strategy
