@@ -1,0 +1,11 @@
+# gitleaks configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "clip gitleaks config"
+
+[allowlist]
+description = "Allowlist for test files and non-sensitive patterns"
+paths = [
+  '''tests/.*''',
+  '''\.test\.ts$''',
+]
