@@ -61,6 +61,10 @@ function renderEndpointTest(
   const bodyParams = endpoint.params?.body ?? {};
   const hasBody = Object.keys(bodyParams).length > 0;
 
+  const queryParams = endpoint.params?.query ?? {};
+  const queryString = buildQueryString(queryParams);
+  const urlSuffix = queryString ? `?${queryString}` : "";
+
   const sampleBody = hasBody
     ? `\n      body: JSON.stringify({\n${Object.entries(bodyParams)
         .map(([name, def]) => `        ${name}: ${sampleValue(name, def.type)}`)
@@ -83,7 +87,7 @@ const API_KEY = process.env.CLIP_TEST_API_KEY || "";
 
 describe("${endpoint.name}", () => {
   test("${endpoint.method} ${endpoint.path} — ${endpoint.description}", async () => {
-    const response = await fetch(\`\${BASE_URL}${endpoint.path}\`, {
+    const response = await fetch(\`\${BASE_URL}${endpoint.path}${urlSuffix}\`, {
       method: "${endpoint.method}",
       headers: {
 ${headers.join(",\n")},
@@ -271,4 +275,22 @@ function sampleValue(paramName: string, type: string): string {
     default:
       return `"test-${paramName}"`;
   }
+}
+
+/**
+ * Builds a URL query string from query param definitions with sample values.
+ */
+function buildQueryString(
+  queryParams: Record<string, { type: string }>,
+): string {
+  const entries = Object.entries(queryParams);
+  if (entries.length === 0) return "";
+  return entries
+    .map(([name, def]) => {
+      const raw = sampleValue(name, def.type);
+      // Strip surrounding quotes for the URL value
+      const value = raw.startsWith('"') ? raw.slice(1, -1) : raw;
+      return `${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+    })
+    .join("&");
 }

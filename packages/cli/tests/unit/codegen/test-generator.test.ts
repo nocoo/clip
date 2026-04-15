@@ -270,6 +270,52 @@ describe("generateTests", () => {
     expect(listContent).toContain("CLIP_TEST_API_KEY");
   });
 
+  it("generated tests include query params in URL", async () => {
+    const queryParamSchema: ClipSchema = {
+      ...SAMPLE_SCHEMA,
+      endpoints: [
+        {
+          name: "search",
+          method: "GET",
+          path: "/todos",
+          description: "Search todos",
+          params: {
+            query: {
+              q: { type: "string", required: true },
+              limit: { type: "number" },
+              completed: { type: "boolean" },
+            },
+          },
+          response: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: "string",
+                title: "string",
+              },
+            },
+          },
+        },
+      ],
+    };
+
+    const outputDir = join(tempDir, "query-params-test");
+    await generateTests(queryParamSchema, outputDir);
+
+    const searchContent = await readFile(
+      join(outputDir, "tests/search.test.ts"),
+      "utf-8",
+    );
+
+    // Should include query params in URL
+    expect(searchContent).toContain("q=test-q");
+    expect(searchContent).toContain("limit=42");
+    expect(searchContent).toContain("completed=true");
+    // Should be appended after the path
+    expect(searchContent).toContain("/todos?");
+  });
+
   it("CRUD sequence uses dynamic path param name from schema", async () => {
     const customParamSchema: ClipSchema = {
       ...SAMPLE_SCHEMA,
