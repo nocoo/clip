@@ -28,7 +28,7 @@ clip/
 │   │   │   │   │   └── config.ts.tpl
 │   │   │   │   └── test-generator.ts # Schema → test file generation
 │   │   │   ├── auth/
-│   │   │   │   └── storage.ts        # Read/write ~/.clip/<alias>/credentials.json
+│   │   │   │   └── storage.ts        # Read/write $CLIP_HOME/<alias>/credentials.json
 │   │   │   └── utils/
 │   │   │       ├── fs.ts             # File system helpers (mkdir, write, chmod)
 │   │   │       └── logger.ts         # Structured console output
@@ -163,7 +163,7 @@ clip.yaml                          .clip-output/<alias>/
      - `src/index.ts` — command router mapping endpoint names to command files
      - `src/commands/<name>.ts` — one file per endpoint, handles arg parsing + HTTP call
      - `src/client.ts` — HTTP client with auth header injection
-     - `src/config.ts` — reads `~/.clip/<alias>/credentials.json`
+     - `src/config.ts` — reads `$CLIP_HOME/<alias>/credentials.json` (`CLIP_HOME` defaults to `~/.clip`)
    - Renders `package.json` and `tsconfig.json` for the generated project
 
 4. **Test Generate** — `packages/cli/src/codegen/test-generator.ts`
@@ -175,7 +175,7 @@ clip.yaml                          .clip-output/<alias>/
 
 ```
 ┌──────────────────┐     ┌──────────────────────────────┐
-│ clip auth set     │────▶│ ~/.clip/<alias>/              │
+│ clip auth set     │────▶│ $CLIP_HOME/<alias>/           │
 │    <alias>       │     │   credentials.json            │
 └──────────────────┘     │   { headerName, headerValue } │
                          └──────────────┬───────────────┘
@@ -188,9 +188,11 @@ clip.yaml                          .clip-output/<alias>/
                          └──────────────────────────────┘
 ```
 
+`CLIP_HOME` defaults to `~/.clip` when not set. Setting `CLIP_HOME` to a custom directory enables isolated testing.
+
 1. User runs `clip auth set <alias>` → interactive prompt collects the API key
-2. Credentials written to `~/.clip/<alias>/credentials.json` with `0600` permissions
-3. Generated CLI's `config.ts` reads this file at runtime
+2. Credentials written to `$CLIP_HOME/<alias>/credentials.json` with `0600` permissions
+3. Generated CLI's `config.ts` reads this file at runtime (resolving `CLIP_HOME` with `~/.clip` fallback)
 4. Generated CLI's `client.ts` injects the header (`headerName: headerValue`) into every HTTP request
 
 ## 4. Technology Choices

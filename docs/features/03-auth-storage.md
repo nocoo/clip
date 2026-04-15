@@ -160,7 +160,8 @@ import { join } from "path";
 import { homedir } from "os";
 
 export async function loadConfig() {
-  const credPath = join(homedir(), ".clip", "<alias>", "credentials.json");
+  const clipHome = process.env.CLIP_HOME ?? join(homedir(), ".clip");
+  const credPath = join(clipHome, "<alias>", "credentials.json");
   try {
     const raw = await readFile(credPath, "utf-8");
     return JSON.parse(raw);

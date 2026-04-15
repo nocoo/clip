@@ -19,7 +19,7 @@ For a schema with `alias: todo`, the generator produces:
 │   │   ├── update.ts
 │   │   └── delete.ts
 │   ├── client.ts          # HTTP client with auth injection
-│   └── config.ts          # Reads ~/.clip/<alias>/credentials.json
+│   └── config.ts          # Reads $CLIP_HOME/<alias>/credentials.json
 ├── package.json           # Generated package manifest
 └── tsconfig.json          # TypeScript config for generated code
 ```
@@ -188,7 +188,8 @@ interface Credentials {
 }
 
 export async function loadConfig(): Promise<Credentials> {
-  const credPath = join(homedir(), ".clip", "${alias}", "credentials.json");
+  const clipHome = process.env.CLIP_HOME ?? join(homedir(), ".clip");
+  const credPath = join(clipHome, "${alias}", "credentials.json");
   try {
     const raw = await readFile(credPath, "utf-8");
     return JSON.parse(raw) as Credentials;
