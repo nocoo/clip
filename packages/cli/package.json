@@ -6,5 +6,9 @@
   "scripts": {
     "test:unit": "bun test tests/unit --coverage"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "dependencies": {
+    "yaml": "^2.8.3",
+    "zod": "^4.3.6"
+  }
 }
