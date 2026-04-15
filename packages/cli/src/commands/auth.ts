@@ -1,4 +1,3 @@
-import { createInterface } from "node:readline";
 import {
   getCredentialsPath,
   loadCredentials,
@@ -77,7 +76,7 @@ export async function authRemove(
   options: { force?: boolean },
 ): Promise<void> {
   if (!options.force) {
-    const answer = await promptSecret(
+    const answer = await promptInput(
       `Remove credentials for "${alias}"? (y/N) `,
     );
     if (answer?.toLowerCase() !== "y") {
@@ -95,9 +94,60 @@ export async function authRemove(
 }
 
 /**
- * Prompt for secret input from stdin.
+ * Prompt for secret input from stdin (hides typed characters).
  */
 async function promptSecret(prompt: string): Promise<string> {
+  const { stdin, stdout } = process;
+  stdout.write(prompt);
+
+  if (!stdin.isTTY) {
+    // Non-interactive: fall back to reading a line from stdin
+    return readLine(stdin);
+  }
+
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding("utf-8");
+
+  return new Promise<string>((resolve) => {
+    let input = "";
+    const onData = (ch: string) => {
+      const code = ch.charCodeAt(0);
+      if (ch === "\r" || ch === "\n") {
+        // Enter
+        stdin.setRawMode(false);
+        stdin.pause();
+        stdin.removeListener("data", onData);
+        stdout.write("\n");
+        resolve(input);
+      } else if (code === 3) {
+        // Ctrl-C
+        stdin.setRawMode(false);
+        stdin.pause();
+        stdin.removeListener("data", onData);
+        stdout.write("\n");
+        process.exit(130);
+      } else if (code === 127 || code === 8) {
+        // Backspace
+        if (input.length > 0) {
+          input = input.slice(0, -1);
+          stdout.write("\b \b");
+        }
+      } else if (code >= 32) {
+        // Printable char — echo a mask character
+        input += ch;
+        stdout.write("*");
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
+
+/**
+ * Prompt for non-secret input (visible) from stdin.
+ */
+async function promptInput(prompt: string): Promise<string> {
+  const { createInterface } = await import("node:readline");
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -107,6 +157,20 @@ async function promptSecret(prompt: string): Promise<string> {
     rl.question(prompt, (answer) => {
       rl.close();
       resolve(answer);
+    });
+  });
+}
+
+/**
+ * Read a single line from a readable stream.
+ */
+async function readLine(stream: NodeJS.ReadStream): Promise<string> {
+  const { createInterface } = await import("node:readline");
+  const rl = createInterface({ input: stream });
+  return new Promise((resolve) => {
+    rl.on("line", (line: string) => {
+      rl.close();
+      resolve(line);
     });
   });
 }
