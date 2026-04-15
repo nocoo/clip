@@ -212,6 +212,12 @@ export default defineConfig({
 | CLI Reference | Reference lookup | All commands with examples |
 | About | Build trust | Mission, tech stack, team |
 
+### Docs Content Source-of-Truth
+
+For MVP, all documentation content is **authored directly in Astro/MDX pages** within `packages/web/src/pages/docs/`. Content is not derived from files in the repo `docs/` directory.
+
+> **Future consideration:** If docs pages drift from the design documents in `docs/`, a build step could generate pages from `docs/` Markdown files. For now, direct authoring in MDX is simpler and avoids the complexity of a content pipeline.
+
 ## 7. SEO and Meta
 
 Each page includes:
@@ -258,6 +264,8 @@ Each page includes:
 | `packages/web/src/pages/docs/schema.astro` | Create | Schema reference |
 | `packages/web/src/pages/docs/cli.astro` | Create | CLI reference |
 | `packages/web/public/favicon.svg` | Create | Favicon |
+| `packages/web/public/og-image.png` | Create | Open Graph social sharing image |
+| `packages/web/tests/build.test.ts` | Create | Build verification test |
 
 ## 9. Test Strategy
 
