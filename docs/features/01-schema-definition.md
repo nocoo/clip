@@ -47,9 +47,12 @@ The `clip.yaml` file is the single source of truth for a clip project. It define
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | `"string" \| "number" \| "boolean"` | Yes | Parameter type |
+| `type` | `"string" \| "number" \| "boolean" \| "array"` | Yes | Parameter type |
 | `required` | `boolean` | No | Whether the parameter is required (default: `false`) |
 | `description` | `string` | No | Parameter description for CLI help |
+| `items` | `ParamDef` | Conditional | Required when `type` is `"array"`. Describes the element type |
+| `enum` | `(string \| number)[]` | No | Restrict value to a fixed set of allowed values |
+| `nullable` | `boolean` | No | Whether the parameter accepts `null` (default: `false`) |
 
 ### ResponseSchema
 
@@ -139,11 +142,19 @@ const aliasPattern = /^[a-z][a-z0-9-]*$/;
 const endpointNamePattern = /^[a-z][a-z0-9-]*$/;
 const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
-const ParamDefSchema = z.object({
-  type: z.enum(["string", "number", "boolean"]),
-  required: z.boolean().optional(),
-  description: z.string().optional(),
-});
+const ParamDefSchema: z.ZodType<ParamDef> = z.lazy(() =>
+  z.object({
+    type: z.enum(["string", "number", "boolean", "array"]),
+    required: z.boolean().optional(),
+    description: z.string().optional(),
+    items: ParamDefSchema.optional(),
+    enum: z.array(z.union([z.string(), z.number()])).optional(),
+    nullable: z.boolean().optional(),
+  }).refine(
+    (data) => data.type !== "array" || data.items !== undefined,
+    { message: "items is required when type is 'array'" }
+  )
+);
 
 const PropertyDefSchema: z.ZodType<PropertyDef> = z.lazy(() =>
   z.union([
@@ -153,11 +164,19 @@ const PropertyDefSchema: z.ZodType<PropertyDef> = z.lazy(() =>
 );
 
 const ResponseSchemaZod: z.ZodType<ResponseSchema> = z.lazy(() =>
-  z.object({
-    type: z.enum(["object", "array", "string", "number", "boolean"]),
-    properties: z.record(PropertyDefSchema).optional(),
-    items: ResponseSchemaZod.optional(),
-  })
+  z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("object"),
+      properties: z.record(PropertyDefSchema),
+    }),
+    z.object({
+      type: z.literal("array"),
+      items: z.lazy(() => ResponseSchemaZod),
+    }),
+    z.object({ type: z.literal("string") }),
+    z.object({ type: z.literal("number") }),
+    z.object({ type: z.literal("boolean") }),
+  ])
 );
 
 const EndpointSchema = z.object({
@@ -199,6 +218,8 @@ After Zod structural validation passes, perform these additional checks in `vali
 
 ```typescript
 // packages/cli/src/schema/validator.ts
+
+import type { ValidationError } from "./types";
 
 export function validateSemantics(schema: ClipSchema): ValidationError[] {
   const errors: ValidationError[] = [];
@@ -250,7 +271,9 @@ export function validateSemantics(schema: ClipSchema): ValidationError[] {
 ```typescript
 import { readFile } from "fs/promises";
 import { parse as parseYaml } from "yaml";
-import { ClipSchemaZod } from "./validator";
+import { ClipSchemaZod, validateSemantics } from "./validator";
+import { ClipSchemaError } from "./types";
+import type { ClipSchema } from "./types";
 
 export async function parseClipSchema(filePath: string): Promise<ClipSchema> {
   const raw = await readFile(filePath, "utf-8");
@@ -277,15 +300,20 @@ Re-exports the inferred TypeScript types from the Zod schemas:
 
 ```typescript
 import type { z } from "zod";
-import type { ClipSchemaZod, EndpointSchema, ParamDefSchema } from "./validator";
+import type { ClipSchemaZod } from "./validator";
 
 export type ClipSchema = z.infer<typeof ClipSchemaZod>;
-export type Endpoint = z.infer<typeof EndpointSchema>;
-export type ParamDef = z.infer<typeof ParamDefSchema>;
 
 export interface ValidationError {
   path: string;
   message: string;
+}
+
+export class ClipSchemaError extends Error {
+  constructor(public errors: ValidationError[]) {
+    super(`Schema validation failed:\n${errors.map(e => `  ${e.path}: ${e.message}`).join("\n")}`);
+    this.name = "ClipSchemaError";
+  }
 }
 ```
 
