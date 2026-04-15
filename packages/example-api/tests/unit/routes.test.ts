@@ -134,6 +134,46 @@ describe("Todo Routes", () => {
       expect(res.status).toBe(404);
     });
 
+    it("returns 400 when completed is not a boolean", async () => {
+      const created = todoStore.create("Validate me");
+      const res = await app.request(`/todos/${created.id}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: "yes" }),
+      });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("completed must be a boolean");
+    });
+
+    it("returns 400 when title is not a string", async () => {
+      const created = todoStore.create("Validate me");
+      const res = await app.request(`/todos/${created.id}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ title: 123 }),
+      });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe("title must be a string");
+    });
+
+    it("ignores unknown fields", async () => {
+      const created = todoStore.create("Original");
+      const res = await app.request(`/todos/${created.id}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Updated",
+          unknownField: "should be ignored",
+        }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.title).toBe("Updated");
+      expect((body as Record<string, unknown>).unknownField).toBeUndefined();
+    });
+
     it("returns 401 without API key", async () => {
       const res = await app.request("/todos/some-id", {
         method: "PATCH",

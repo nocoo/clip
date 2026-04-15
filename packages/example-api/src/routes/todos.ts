@@ -38,7 +38,20 @@ todosRouter.patch("/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
 
-  const todo = todoStore.update(id, body);
+  // Validate field types
+  if (body.title !== undefined && typeof body.title !== "string") {
+    return c.json({ error: "title must be a string" }, 400);
+  }
+  if (body.completed !== undefined && typeof body.completed !== "boolean") {
+    return c.json({ error: "completed must be a boolean" }, 400);
+  }
+
+  // Strip unknown fields — only allow title and completed
+  const patch: { title?: string; completed?: boolean } = {};
+  if (body.title !== undefined) patch.title = body.title;
+  if (body.completed !== undefined) patch.completed = body.completed;
+
+  const todo = todoStore.update(id, patch);
 
   if (!todo) {
     return c.json({ error: "Not found" }, 404);
