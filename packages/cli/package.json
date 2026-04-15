@@ -1,0 +1,10 @@
+{
+  "name": "@clip/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:unit": "bun test tests/unit --coverage"
+  },
+  "devDependencies": {}
+}
