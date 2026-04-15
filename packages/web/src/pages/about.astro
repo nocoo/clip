@@ -1,0 +1,113 @@
+---
+// biome-ignore lint/correctness/noUnusedImports: used in Astro template
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="About" description="Learn about clip — the open-source tool that turns API schemas into CLI tools.">
+  <div class="about">
+    <div class="about-inner">
+      <h1>About clip</h1>
+
+      <section class="about-section">
+        <h2>What is clip?</h2>
+        <p>
+          clip is an open-source tool that generates fully working CLI tools from
+          a YAML schema. Instead of manually writing argument parsers, HTTP
+          clients, and authentication logic, you define your API once and let
+          clip handle the rest.
+        </p>
+        <p>
+          The goal is simple: if you have an API, you should be able to interact
+          with it from the command line without writing a single line of CLI
+          code.
+        </p>
+      </section>
+
+      <section class="about-section">
+        <h2>Why clip?</h2>
+        <p>
+          Most APIs ship without a CLI. The ones that do have CLIs require
+          significant engineering effort to build and maintain. clip eliminates
+          that work by generating the entire CLI from a declarative schema.
+        </p>
+        <ul>
+          <li><strong>Schema-first</strong> — One YAML file drives everything</li>
+          <li><strong>Zero boilerplate</strong> — No manual argument parsing or HTTP plumbing</li>
+          <li><strong>Auto-tested</strong> — Generated tests validate API response shapes</li>
+          <li><strong>Secure by default</strong> — Credentials stored with restricted permissions</li>
+        </ul>
+      </section>
+
+      <section class="about-section">
+        <h2>Technology</h2>
+        <p>clip is built with modern tools for speed and simplicity:</p>
+        <ul>
+          <li><strong>Bun</strong> — JavaScript runtime and package manager</li>
+          <li><strong>TypeScript</strong> — Strict types throughout</li>
+          <li><strong>Commander.js</strong> — Argument parsing in generated CLIs</li>
+          <li><strong>Astro</strong> — This documentation site</li>
+          <li><strong>Biome</strong> — Linting and formatting</li>
+        </ul>
+      </section>
+
+      <section class="about-section">
+        <h2>Open Source</h2>
+        <p>
+          clip is open source and available on
+          <a
+            href="https://github.com/user/clip"
+            target="_blank"
+            rel="noopener noreferrer">GitHub</a
+          >. Contributions, issues, and feedback are welcome.
+        </p>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .about {
+    padding: var(--space-xl) 0 calc(var(--space-xl) * 2);
+  }
+
+  .about-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+  }
+
+  .about-inner h1 {
+    margin-bottom: var(--space-xl);
+  }
+
+  .about-section {
+    margin-bottom: var(--space-xl);
+  }
+
+  .about-section h2 {
+    margin-bottom: var(--space-md);
+  }
+
+  .about-section p {
+    margin-bottom: var(--space-md);
+    line-height: 1.7;
+  }
+
+  .about-section ul {
+    list-style: disc;
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+  }
+
+  .about-section li {
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-sm);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    .about-inner {
+      padding: 0 var(--space-md);
+    }
+  }
+</style>
