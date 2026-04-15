@@ -1,0 +1,53 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: used in Astro template
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="docs-wrapper">
+    <DocsSidebar />
+    <article class="docs-content">
+      <h1>{title}</h1>
+      <slot />
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .docs-wrapper {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+    display: flex;
+    gap: var(--space-xl);
+    min-height: calc(100vh - 200px);
+  }
+
+  .docs-content {
+    flex: 1;
+    min-width: 0;
+    max-width: 800px;
+  }
+
+  .docs-content h1 {
+    margin-bottom: var(--space-lg);
+    font-size: 2.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .docs-wrapper {
+      flex-direction: column;
+      padding: var(--space-lg) var(--space-md);
+      gap: var(--space-lg);
+    }
+
+    .docs-content h1 {
+      font-size: 1.75rem;
+    }
+  }
+</style>

@@ -1,0 +1,110 @@
+---
+const _features = [
+  {
+    icon: "📋",
+    title: "Schema-First",
+    description:
+      "Define your API once in YAML, generate everything. One schema drives your CLI, tests, and documentation.",
+  },
+  {
+    icon: "🧪",
+    title: "Auto-Generated Tests",
+    description:
+      "Every endpoint gets a test that validates response shape. Run them anytime with a single command.",
+  },
+  {
+    icon: "🔐",
+    title: "Zero Config Auth",
+    description:
+      "Credentials stored securely, injected automatically. Set once, use everywhere — no manual token juggling.",
+  },
+];
+---
+
+<section class="features">
+  <div class="features-inner">
+    <h2 class="features-heading">Everything you need to ship a CLI</h2>
+    <p class="features-subheading">
+      clip handles the boilerplate so you can focus on your API.
+    </p>
+    <div class="features-grid">
+      {
+        features.map((feature) => (
+          <div class="feature-card">
+            <span class="feature-icon">{feature.icon}</span>
+            <h3 class="feature-title">{feature.title}</h3>
+            <p class="feature-description">{feature.description}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: var(--space-xl) 0 calc(var(--space-xl) * 1.5);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .features-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+  }
+
+  .features-heading {
+    text-align: center;
+    margin-bottom: var(--space-sm);
+  }
+
+  .features-subheading {
+    text-align: center;
+    font-size: 1.0625rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-xl);
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+  }
+
+  .feature-card {
+    padding: var(--space-lg);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    transition: border-color 0.15s ease;
+  }
+
+  .feature-card:hover {
+    border-color: var(--color-text-secondary);
+  }
+
+  .feature-icon {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-md);
+  }
+
+  .feature-title {
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+  }
+
+  .feature-description {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

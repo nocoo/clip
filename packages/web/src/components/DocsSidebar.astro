@@ -1,0 +1,82 @@
+---
+const _currentPath = Astro.url.pathname;
+
+const _links = [
+  { href: "/docs/", label: "Getting Started" },
+  { href: "/docs/schema/", label: "Schema Reference" },
+  { href: "/docs/cli/", label: "CLI Reference" },
+];
+---
+
+<aside class="sidebar">
+  <h3 class="sidebar-title">Documentation</h3>
+  <nav class="sidebar-nav">
+    {
+      links.map((link) => (
+        <a
+          href={link.href}
+          class:list={["sidebar-link", { active: currentPath === link.href }]}
+        >
+          {link.label}
+        </a>
+      ))
+    }
+  </nav>
+</aside>
+
+<style>
+  .sidebar {
+    width: var(--docs-sidebar-width);
+    flex-shrink: 0;
+    position: sticky;
+    top: calc(64px + var(--space-xl));
+    height: fit-content;
+  }
+
+  .sidebar-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-md);
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .sidebar-link {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 6px;
+    transition: all 0.15s ease;
+  }
+
+  .sidebar-link:hover {
+    color: var(--color-text);
+    background: var(--color-bg-elevated);
+  }
+
+  .sidebar-link.active {
+    color: var(--color-accent);
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 100%;
+      position: static;
+    }
+
+    .sidebar-nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+  }
+</style>

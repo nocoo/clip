@@ -1,0 +1,40 @@
+---
+interface Props {
+  code: string;
+  lang?: string;
+  title?: string;
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: used in Astro template
+const { code, lang = "yaml", title } = Astro.props;
+---
+
+<div class="code-block">
+  {title && <div class="code-block-header">{title}</div>}
+  <pre><code class={`language-${lang}`}>{code}</code></pre>
+</div>
+
+<style>
+  .code-block {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: var(--space-md) 0;
+  }
+
+  .code-block-header {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+  }
+
+  .code-block pre {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+  }
+</style>

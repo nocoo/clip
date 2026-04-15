@@ -1,0 +1,176 @@
+---
+const _currentPath = Astro.url.pathname;
+
+const _navLinks = [
+  { href: "/docs/", label: "Docs" },
+  { href: "/about/", label: "About" },
+];
+---
+
+<header class="header">
+  <div class="header-inner">
+    <a href="/" class="logo">
+      <span class="logo-icon">⌘</span>
+      <span class="logo-text">clip</span>
+    </a>
+
+    <nav class="nav" id="nav">
+      {
+        navLinks.map((link) => (
+          <a
+            href={link.href}
+            class:list={["nav-link", { active: currentPath.startsWith(link.href) }]}
+          >
+            {link.label}
+          </a>
+        ))
+      }
+      <a
+        href="https://github.com/user/clip"
+        class="nav-link nav-link-external"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        GitHub
+      </a>
+    </nav>
+
+    <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</header>
+
+<script>
+  const toggle = document.getElementById("mobile-toggle");
+  const nav = document.getElementById("nav");
+  if (toggle && nav) {
+    toggle.addEventListener("click", () => {
+      nav.classList.toggle("open");
+      toggle.classList.toggle("open");
+    });
+  }
+</script>
+
+<style>
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 10, 11, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .header-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .logo:hover {
+    color: var(--color-text);
+  }
+
+  .logo-icon {
+    font-size: 1.25rem;
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+  }
+
+  .nav-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--color-text);
+  }
+
+  .mobile-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  .mobile-toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--color-text);
+    border-radius: 1px;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-toggle.open span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+
+  .mobile-toggle.open span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .mobile-toggle.open span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+  }
+
+  @media (max-width: 768px) {
+    .header-inner {
+      padding: 0 var(--space-md);
+    }
+
+    .mobile-toggle {
+      display: flex;
+    }
+
+    .nav {
+      display: none;
+      position: absolute;
+      top: 64px;
+      left: 0;
+      right: 0;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      flex-direction: column;
+      padding: var(--space-md);
+      gap: 0;
+    }
+
+    .nav.open {
+      display: flex;
+    }
+
+    .nav-link {
+      padding: var(--space-sm) var(--space-md);
+      width: 100%;
+    }
+  }
+</style>
