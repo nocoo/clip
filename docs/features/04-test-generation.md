@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-clip automatically generates a test suite alongside the CLI. Each API endpoint in the schema gets a corresponding test file that validates the endpoint is reachable, returns a successful response (2xx), and the response body matches the declared schema shape.
+clip automatically generates a test suite alongside the CLI. Independent endpoints (e.g., `list`, `create`) each get their own test file. Resource-dependent endpoints (get, update, delete) are covered by a single CRUD-sequence test that runs create → get → update → delete in order against a real resource.
 
 ## 2. Generated Test Structure
 
@@ -14,9 +14,7 @@ For `alias: todo`, the generated tests live alongside the generated CLI:
 ├── tests/
 │   ├── list.test.ts
 │   ├── create.test.ts
-│   ├── get.test.ts
-│   ├── update.test.ts
-│   └── delete.test.ts
+│   └── _crud-sequence.test.ts
 └── package.json    # Includes test script
 ```
 
