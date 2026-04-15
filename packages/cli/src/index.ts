@@ -32,7 +32,12 @@ const auth = program.command("auth").description("Manage API credentials");
 auth
   .command("set <alias>")
   .description("Save API key credentials")
-  .option("--key <value>", "API key value")
+  // Known limitation: --key flag exposes the value in shell history.
+  // Acceptable for MVP; recommend using the interactive prompt (omit --key) for production use.
+  .option(
+    "--key <value>",
+    "API key value (Warning: key may be visible in shell history. Use interactive prompt for sensitive keys)",
+  )
   .option("--header <name>", "Auth header name")
   .action(async (alias: string, opts: { key?: string; header?: string }) => {
     await authSet(alias, opts);
