@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.clip-output/
+*.tsbuildinfo
+.astro/
