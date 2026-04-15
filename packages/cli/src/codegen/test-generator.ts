@@ -164,9 +164,12 @@ ${createBody},
   // Get step
   if (getEp) {
     const getPath = replacePathParam(getEp.path);
+    const getQueryParams = getEp.params?.query ?? {};
+    const getQueryString = buildQueryString(getQueryParams);
+    const getUrlSuffix = getQueryString ? `?${getQueryString}` : "";
     steps.push(`
     // Get
-    const getRes = await fetch(\`\${BASE_URL}${getPath}\`, {
+    const getRes = await fetch(\`\${BASE_URL}${getPath}${getUrlSuffix}\`, {
       method: "GET",
       headers: {
         "${schema.auth.headerName}": API_KEY,
@@ -178,9 +181,12 @@ ${createBody},
   // Update step
   if (updateEp) {
     const updatePath = replacePathParam(updateEp.path);
+    const updateQueryParams = updateEp.params?.query ?? {};
+    const updateQueryString = buildQueryString(updateQueryParams);
+    const updateUrlSuffix = updateQueryString ? `?${updateQueryString}` : "";
     steps.push(`
     // Update
-    const updateRes = await fetch(\`\${BASE_URL}${updatePath}\`, {
+    const updateRes = await fetch(\`\${BASE_URL}${updatePath}${updateUrlSuffix}\`, {
       method: "${updateEp.method}",
       headers: {
         "Content-Type": "application/json",
@@ -200,9 +206,12 @@ ${updateBody},
   // Delete step
   if (deleteEp) {
     const deletePath = replacePathParam(deleteEp.path);
+    const deleteQueryParams = deleteEp.params?.query ?? {};
+    const deleteQueryString = buildQueryString(deleteQueryParams);
+    const deleteUrlSuffix = deleteQueryString ? `?${deleteQueryString}` : "";
     steps.push(`
     // Delete
-    const deleteRes = await fetch(\`\${BASE_URL}${deletePath}\`, {
+    const deleteRes = await fetch(\`\${BASE_URL}${deletePath}${deleteUrlSuffix}\`, {
       method: "DELETE",
       headers: {
         "${schema.auth.headerName}": API_KEY,

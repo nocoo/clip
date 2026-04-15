@@ -392,6 +392,95 @@ describe("generateTests", () => {
     expect(crudContent).not.toContain(":todoId");
   });
 
+  it("CRUD sequence includes query params in URL for resource endpoints", async () => {
+    const crudWithQuerySchema: ClipSchema = {
+      ...SAMPLE_SCHEMA,
+      endpoints: [
+        {
+          name: "create",
+          method: "POST",
+          path: "/todos",
+          description: "Create a new todo",
+          params: {
+            body: {
+              title: { type: "string", required: true },
+            },
+          },
+          response: {
+            type: "object",
+            properties: {
+              id: "string",
+              title: "string",
+            },
+          },
+        },
+        {
+          name: "get",
+          method: "GET",
+          path: "/todos/:id",
+          description: "Get a todo by ID",
+          params: {
+            path: {
+              id: { type: "string", required: true },
+            },
+            query: {
+              fields: { type: "string" },
+              verbose: { type: "boolean" },
+            },
+          },
+        },
+        {
+          name: "update",
+          method: "PATCH",
+          path: "/todos/:id",
+          description: "Update a todo",
+          params: {
+            path: {
+              id: { type: "string", required: true },
+            },
+            body: {
+              title: { type: "string" },
+            },
+          },
+        },
+        {
+          name: "delete",
+          method: "DELETE",
+          path: "/todos/:id",
+          description: "Delete a todo",
+          params: {
+            path: {
+              id: { type: "string", required: true },
+            },
+            query: {
+              force: { type: "boolean" },
+            },
+          },
+        },
+      ],
+    };
+
+    const outputDir = join(tempDir, "crud-query-params-test");
+    await generateTests(crudWithQuerySchema, outputDir);
+
+    const crudContent = await readFile(
+      join(outputDir, "tests/crud-sequence.test.ts"),
+      "utf-8",
+    );
+
+    // GET step should include query params
+    expect(crudContent).toContain("fields=test-fields");
+    expect(crudContent).toContain("verbose=true");
+    // DELETE step should include query params
+    expect(crudContent).toContain("force=true");
+    // Update has no query params — its URL should not have a query string
+    const updateBlock = crudContent
+      .split("// Update")[1]
+      ?.split("// Delete")[0];
+    expect(updateBlock).toBeDefined();
+    expect(updateBlock).not.toContain("?");
+  });
+
   it("does not generate CRUD test when no create endpoint exists", async () => {
     const noCrudSchema: ClipSchema = {
       ...SAMPLE_SCHEMA,
