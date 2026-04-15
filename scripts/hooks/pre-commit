@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+echo "🔍 Running pre-commit checks..."
+# G1 — Static analysis
+bun run lint
+bun run typecheck
+# L1 — Unit tests
+bun run test:unit
+echo "✅ Pre-commit checks passed"

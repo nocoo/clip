@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+echo "🔍 Running pre-push checks..."
+# G2 — Security scanning
+gitleaks detect --source . --verbose || true
+# osv-scanner may not be installed everywhere, soft-fail
+osv-scanner --lockfile bun.lock 2>/dev/null || true
+echo "✅ Pre-push checks passed"

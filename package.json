@@ -10,7 +10,8 @@
     "test:unit": "bun test --coverage",
     "test:integration": "echo 'No integration tests yet'",
     "lint:secrets": "gitleaks detect --source . --verbose",
-    "lint:deps": "osv-scanner --lockfile bun.lock"
+    "lint:deps": "osv-scanner --lockfile bun.lock",
+    "prepare": "git config core.hooksPath scripts/hooks"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
