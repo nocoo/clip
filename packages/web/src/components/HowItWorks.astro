@@ -8,10 +8,11 @@ const steps = [
       "Write a clip.yaml file describing your API endpoints, authentication, and response shapes.",
     code: `# clip.yaml
 name: todo
-version: "1.0"
-base_url: https://api.todo.app
+version: "1.0.0"
+baseUrl: https://api.todo.app
 auth:
-  type: bearer
+  type: header
+  headerName: "X-API-Key"
 endpoints:
   - name: list
     method: GET
@@ -41,10 +42,10 @@ $ clip install
     code: `$ todo list
 [{"id": "1", "title": "Buy milk", "completed": false}]
 
-$ todo create --title "Write docs" --completed false
+$ todo create --title "Write docs"
 {"id": "2", "title": "Write docs", "completed": false}
 
-$ todo test
+$ clip test todo
 ✓ GET /todos — 200, shape valid
 ✓ POST /todos — 201, shape valid
 5/5 tests passed`,
