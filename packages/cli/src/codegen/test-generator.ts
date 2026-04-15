@@ -129,6 +129,18 @@ function renderCrudSequenceTest(
 
   const steps: string[] = [];
 
+  // Extract the path param name from the first resource endpoint's params.path definition.
+  // Falls back to "id" if no params.path is defined.
+  const firstResourceEp = resourceEndpoints[0];
+  const pathParamName = firstResourceEp.params?.path
+    ? Object.keys(firstResourceEp.params.path)[0]
+    : "id";
+
+  // Helper: replace all :paramName occurrences in a path with the template variable
+  const replacePathParam = (path: string): string =>
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional template placeholder for generated code
+    path.replace(new RegExp(`:${pathParamName}`, "g"), "${createdId}");
+
   // Create step
   steps.push(`    // Create
     const createRes = await fetch(\`\${BASE_URL}${createEndpoint.path}\`, {
@@ -143,12 +155,11 @@ ${createBody},
     });
     expect(createRes.ok).toBe(true);
     const created = await createRes.json();
-    const createdId = created.id;`);
+    const createdId = created.${pathParamName};`);
 
   // Get step
   if (getEp) {
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional template placeholder for generated code
-    const getPath = getEp.path.replace(/:id/g, "${createdId}");
+    const getPath = replacePathParam(getEp.path);
     steps.push(`
     // Get
     const getRes = await fetch(\`\${BASE_URL}${getPath}\`, {
@@ -162,8 +173,7 @@ ${createBody},
 
   // Update step
   if (updateEp) {
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional template placeholder for generated code
-    const updatePath = updateEp.path.replace(/:id/g, "${createdId}");
+    const updatePath = replacePathParam(updateEp.path);
     steps.push(`
     // Update
     const updateRes = await fetch(\`\${BASE_URL}${updatePath}\`, {
@@ -185,8 +195,7 @@ ${updateBody},
 
   // Delete step
   if (deleteEp) {
-    // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional template placeholder for generated code
-    const deletePath = deleteEp.path.replace(/:id/g, "${createdId}");
+    const deletePath = replacePathParam(deleteEp.path);
     steps.push(`
     // Delete
     const deleteRes = await fetch(\`\${BASE_URL}${deletePath}\`, {

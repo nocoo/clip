@@ -270,6 +270,82 @@ describe("generateTests", () => {
     expect(listContent).toContain("CLIP_TEST_API_KEY");
   });
 
+  it("CRUD sequence uses dynamic path param name from schema", async () => {
+    const customParamSchema: ClipSchema = {
+      ...SAMPLE_SCHEMA,
+      endpoints: [
+        {
+          name: "create",
+          method: "POST",
+          path: "/todos",
+          description: "Create a new todo",
+          params: {
+            body: {
+              title: { type: "string", required: true },
+            },
+          },
+          response: {
+            type: "object",
+            properties: {
+              todoId: "string",
+              title: "string",
+            },
+          },
+        },
+        {
+          name: "get",
+          method: "GET",
+          path: "/todos/:todoId",
+          description: "Get a todo by ID",
+          params: {
+            path: {
+              todoId: { type: "string", required: true },
+            },
+          },
+        },
+        {
+          name: "update",
+          method: "PATCH",
+          path: "/todos/:todoId",
+          description: "Update a todo",
+          params: {
+            path: {
+              todoId: { type: "string", required: true },
+            },
+            body: {
+              title: { type: "string" },
+            },
+          },
+        },
+        {
+          name: "delete",
+          method: "DELETE",
+          path: "/todos/:todoId",
+          description: "Delete a todo",
+          params: {
+            path: {
+              todoId: { type: "string", required: true },
+            },
+          },
+        },
+      ],
+    };
+
+    const outputDir = join(tempDir, "custom-param-test");
+    await generateTests(customParamSchema, outputDir);
+
+    const crudContent = await readFile(
+      join(outputDir, "tests/crud-sequence.test.ts"),
+      "utf-8",
+    );
+
+    // Should use created.todoId, not created.id
+    expect(crudContent).toContain("created.todoId");
+    expect(crudContent).not.toContain("created.id");
+    // Path should be substituted with the dynamic param
+    expect(crudContent).not.toContain(":todoId");
+  });
+
   it("does not generate CRUD test when no create endpoint exists", async () => {
     const noCrudSchema: ClipSchema = {
       ...SAMPLE_SCHEMA,
