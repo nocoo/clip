@@ -142,6 +142,28 @@ const aliasPattern = /^[a-z][a-z0-9-]*$/;
 const endpointNamePattern = /^[a-z][a-z0-9-]*$/;
 const httpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 
+// --- Type declarations for recursive Zod schemas ---
+
+interface ParamDef {
+  type: "string" | "number" | "boolean" | "array";
+  required?: boolean;
+  description?: string;
+  items?: ParamDef;
+  enum?: (string | number)[];
+  nullable?: boolean;
+}
+
+type PropertyDef = "string" | "number" | "boolean" | ResponseSchema;
+
+type ResponseSchema =
+  | { type: "object"; properties: Record<string, PropertyDef> }
+  | { type: "array"; items: ResponseSchema }
+  | { type: "string" }
+  | { type: "number" }
+  | { type: "boolean" };
+
+// --- Zod schemas ---
+
 const ParamDefSchema: z.ZodType<ParamDef> = z.lazy(() =>
   z.object({
     type: z.enum(["string", "number", "boolean", "array"]),
@@ -219,7 +241,7 @@ After Zod structural validation passes, perform these additional checks in `vali
 ```typescript
 // packages/cli/src/schema/validator.ts
 
-import type { ValidationError } from "./types";
+import type { ClipSchema, ValidationError } from "./types";
 
 export function validateSemantics(schema: ClipSchema): ValidationError[] {
   const errors: ValidationError[] = [];
