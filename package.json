@@ -1,9 +1,18 @@
 {
   "name": "clip",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
+    "lint": "biome check . --error-on-warnings",
+    "typecheck": "tsc --noEmit",
     "test:unit": "bun test --coverage",
     "test:integration": "echo 'No integration tests yet'"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "@types/bun": "^1.3.12",
+    "typescript": "^6.0.2"
   }
 }

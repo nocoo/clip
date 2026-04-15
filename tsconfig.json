@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@types/bun"]
+  },
+  "include": [
+    "packages/cli/src/**/*.ts",
+    "packages/cli/tests/**/*.ts",
+    "packages/example-api/src/**/*.ts",
+    "packages/example-api/tests/**/*.ts",
+    "packages/web/src/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", ".clip-output"]
+}

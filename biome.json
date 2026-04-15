@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
   "linter": {
     "enabled": true,
     "rules": {
@@ -11,10 +11,24 @@
     "indentStyle": "space",
     "indentWidth": 2
   },
-  "organizeImports": {
-    "enabled": true
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on"
+        }
+      }
+    }
   },
   "files": {
-    "ignore": ["node_modules", "dist", ".clip-output", ".astro"]
+    "includes": [
+      "**/*.ts",
+      "**/*.json",
+      "**/*.astro",
+      "!!**/node_modules",
+      "!!**/dist",
+      "!!**/.clip-output",
+      "!!**/.astro"
+    ]
   }
 }
