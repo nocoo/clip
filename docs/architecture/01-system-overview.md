@@ -269,7 +269,39 @@ The 6DQ (6-Dimension Quality) system ensures code quality through layered automa
 
 ### Git Hooks
 
-**Pre-commit hook** (fast, local checks):
+#### Hook Installation
+
+Git hooks are committed to the repository under `scripts/hooks/` and installed automatically via a `prepare` script:
+
+**`package.json`** (root):
+```jsonc
+{
+  "scripts": {
+    "prepare": "git config core.hooksPath scripts/hooks"
+  }
+}
+```
+
+Running `bun install` triggers the `prepare` script, which configures Git to use `scripts/hooks/` as the hooks directory. This ensures all developers share the same hooks without manual setup.
+
+**Repository layout:**
+```
+scripts/hooks/
+├── pre-commit       # L1 + G1 checks (fast, local)
+└── pre-push         # L2 + G2 checks (thorough)
+```
+
+> **Note:** Hook files are committed to the repo (not gitignored) and must be executable (`chmod +x`).
+
+#### Coverage Thresholds
+
+| Package | Coverage Threshold | Rationale |
+|---------|-------------------|-----------|
+| `@clip/cli` | 90% line coverage | Core logic, must be well-tested |
+| `@clip/example-api` | 90% line coverage | Reference implementation, validates the clip workflow |
+| `@clip/web` | Excluded from coverage | Static site with no business logic |
+
+**Pre-commit hook** — `scripts/hooks/pre-commit` (fast, local checks):
 ```bash
 #!/bin/bash
 set -e
@@ -280,7 +312,7 @@ biome check . --error-on-warnings
 tsc --noEmit
 ```
 
-**Pre-push hook** (thorough checks):
+**Pre-push hook** — `scripts/hooks/pre-push` (thorough checks):
 ```bash
 #!/bin/bash
 set -e
