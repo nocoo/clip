@@ -146,8 +146,11 @@ function renderCrudSequenceTest(
     path.replace(new RegExp(`:${pathParamName}`, "g"), "${createdId}");
 
   // Create step
+  const createQueryParams = createEndpoint.params?.query ?? {};
+  const createQueryString = buildQueryString(createQueryParams);
+  const createUrlSuffix = createQueryString ? `?${createQueryString}` : "";
   steps.push(`    // Create
-    const createRes = await fetch(\`\${BASE_URL}${createEndpoint.path}\`, {
+    const createRes = await fetch(\`\${BASE_URL}${createEndpoint.path}${createUrlSuffix}\`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

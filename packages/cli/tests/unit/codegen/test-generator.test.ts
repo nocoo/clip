@@ -481,6 +481,73 @@ describe("generateTests", () => {
     expect(updateBlock).not.toContain("?");
   });
 
+  it("CRUD sequence includes query params in create step URL", async () => {
+    const createWithQuerySchema: ClipSchema = {
+      ...SAMPLE_SCHEMA,
+      endpoints: [
+        {
+          name: "create",
+          method: "POST",
+          path: "/todos",
+          description: "Create a new todo",
+          params: {
+            query: {
+              tenant: { type: "string", required: true },
+            },
+            body: {
+              title: { type: "string", required: true },
+            },
+          },
+          response: {
+            type: "object",
+            properties: {
+              id: "string",
+              title: "string",
+            },
+          },
+        },
+        {
+          name: "get",
+          method: "GET",
+          path: "/todos/:id",
+          description: "Get a todo by ID",
+          params: {
+            path: {
+              id: { type: "string", required: true },
+            },
+          },
+        },
+        {
+          name: "delete",
+          method: "DELETE",
+          path: "/todos/:id",
+          description: "Delete a todo",
+          params: {
+            path: {
+              id: { type: "string", required: true },
+            },
+          },
+        },
+      ],
+    };
+
+    const outputDir = join(tempDir, "crud-create-query-params-test");
+    await generateTests(createWithQuerySchema, outputDir);
+
+    const crudContent = await readFile(
+      join(outputDir, "tests/crud-sequence.test.ts"),
+      "utf-8",
+    );
+
+    // Create step should include query params in URL
+    const createBlock = crudContent.split("// Create")[1]?.split("// Get")[0];
+    expect(createBlock).toBeDefined();
+    expect(createBlock).toContain("?");
+    expect(createBlock).toContain("tenant=test-tenant");
+    // Full URL should be /todos?tenant=test-tenant
+    expect(crudContent).toContain("/todos?tenant=test-tenant");
+  });
+
   it("does not generate CRUD test when no create endpoint exists", async () => {
     const noCrudSchema: ClipSchema = {
       ...SAMPLE_SCHEMA,
