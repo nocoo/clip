@@ -168,7 +168,7 @@ clip.yaml                          .clip-output/<alias>/
 
 4. **Test Generate** — `packages/cli/src/codegen/test-generator.ts`
    - Takes validated `ClipSchema` AST
-   - Generates `tests/<name>.test.ts` for each endpoint
+   - Generates `tests/<name>.test.ts` for independent endpoints (e.g., `list.test.ts`, `create.test.ts`) and `tests/crud-sequence.test.ts` for resource-dependent endpoints
    - Each test sends a request with sample data and validates response shape
 
 ### Auth Flow

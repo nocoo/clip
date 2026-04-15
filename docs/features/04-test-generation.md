@@ -14,7 +14,7 @@ For `alias: todo`, the generated tests live alongside the generated CLI:
 ├── tests/
 │   ├── list.test.ts
 │   ├── create.test.ts
-│   └── _crud-sequence.test.ts
+│   └── crud-sequence.test.ts
 └── package.json    # Includes test script
 ```
 
@@ -30,13 +30,20 @@ ClipSchema AST
 │  test-generator       │
 │  .generateTests()     │
 ├──────────────────────┤
-│ For each endpoint:    │
+│ For each independent  │
+│ endpoint:             │
 │ 1. Generate sample    │
 │    request data       │
 │ 2. Build test that:   │
 │    a. Sends HTTP req  │
 │    b. Checks 2xx      │
 │    c. Validates shape │
+│                       │
+│ For resource-dependent│
+│ endpoints (get,       │
+│ update, delete):      │
+│ → Generate CRUD-      │
+│   sequence test       │
 └──────────────────────┘
 ```
 
@@ -273,10 +280,10 @@ Resource-dependent endpoints (get, update, delete) require a previously created 
 1. **CRUD sequence test** (primary) — Runs create → get → update → delete in sequence using a real created resource. This is always generated when the schema contains endpoints for these operations.
 2. **Independent endpoint tests** (optional) — Each test is self-contained with sample data. These are useful for endpoints that don't depend on prior state (e.g., `list`). For resource-dependent endpoints (get/update/delete), individual tests are **not generated** — use the CRUD sequence instead.
 
-The CRUD sequence test is generated as `tests/_crud-sequence.test.ts`:
+The CRUD sequence test is generated as `tests/crud-sequence.test.ts`:
 
 ```typescript
-// Generated tests/_crud-sequence.test.ts
+// Generated tests/crud-sequence.test.ts
 describe("CRUD sequence", () => {
   let createdId: string;
 
@@ -315,7 +322,8 @@ describe("CRUD sequence", () => {
 ### Unit Tests — `packages/cli/tests/unit/codegen/`
 
 **`test-generator.test.ts`**:
-- ✅ Generates one test file per endpoint
+- ✅ Generates one test file per independent endpoint (list, create)
+- ✅ Generates CRUD-sequence test for resource-dependent endpoints (get, update, delete)
 - ✅ Generated tests use correct HTTP method
 - ✅ Generated tests include auth header
 - ✅ Response shape validation handles `object` type
