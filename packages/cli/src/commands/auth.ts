@@ -5,6 +5,91 @@ import {
   removeCredentials,
   saveCredentials,
 } from "../auth/storage";
+import type { ClipSchema } from "../schema/types";
+
+/**
+ * `clip auth login <alias>` — perform browser-based OAuth login flow.
+ *
+ * Reads the local `clip.yaml` to discover OAuth configuration, runs
+ * `performLogin()` from `@nocoo/cli-base`, and stores the received token
+ * as OAuthCredentials.
+ */
+export async function authLogin(
+  alias: string,
+  deps: {
+    parseSchema?: (path: string) => Promise<ClipSchema>;
+    performLogin?: typeof import("@nocoo/cli-base").performLogin;
+    openBrowser?: typeof import("@nocoo/cli-base").openBrowser;
+    timeoutMs?: number;
+  } = {},
+): Promise<void> {
+  const parseSchema =
+    deps.parseSchema ??
+    (async (p: string) =>
+      (await import("../schema/parser")).parseClipSchema(p));
+
+  let schema: ClipSchema;
+  try {
+    schema = await parseSchema("clip.yaml");
+  } catch (err) {
+    console.error(
+      `❌ Failed to read clip.yaml — ${(err as Error).message}\n` +
+        "   The login command must run in a directory containing a clip.yaml.",
+    );
+    process.exit(1);
+  }
+
+  if (schema.auth.type !== "oauth") {
+    console.error(
+      `❌ This CLI uses ${schema.auth.type} authentication. Run: clip auth set ${alias}`,
+    );
+    process.exit(1);
+  }
+
+  const oauth = schema.auth;
+  // Resolve the SaaS apiUrl: either the absolute loginUrl, or the baseUrl
+  // (loginPath is appended by performLogin via its `loginPath` option).
+  const apiUrl = oauth.loginUrl
+    ? new URL(oauth.loginUrl).origin
+    : schema.baseUrl;
+  const loginPath = oauth.loginUrl
+    ? new URL(oauth.loginUrl).pathname
+    : oauth.loginPath;
+
+  const cliBase = await import("@nocoo/cli-base");
+  const performLogin = deps.performLogin ?? cliBase.performLogin;
+  const openBrowser = deps.openBrowser ?? cliBase.openBrowser;
+
+  console.log(`🔐 Opening browser to log in to "${alias}"...`);
+
+  let savedToken: string | null = null;
+  const result = await performLogin({
+    apiUrl,
+    loginPath,
+    tokenParam: oauth.tokenParam,
+    timeoutMs: deps.timeoutMs ?? 5 * 60 * 1000,
+    openBrowser,
+    onSaveToken: (token: string) => {
+      savedToken = token;
+    },
+    log: (msg: string) => console.log(msg),
+  });
+
+  if (!result.success || !savedToken) {
+    console.error(`❌ Login failed: ${result.error ?? "no token received"}`);
+    process.exit(1);
+  }
+
+  await saveCredentials(alias, {
+    type: "oauth",
+    token: savedToken,
+    email: result.email,
+  });
+
+  console.log(
+    `✅ Logged in to "${alias}"${result.email ? ` as ${result.email}` : ""}`,
+  );
+}
 
 /**
  * `clip auth set <alias>` — save API key credentials.
@@ -20,6 +105,12 @@ export async function authSet(
     try {
       const { parseClipSchema } = await import("../schema/parser");
       const schema = await parseClipSchema("clip.yaml");
+      if (schema.auth.type === "oauth") {
+        console.error(
+          `❌ This CLI uses OAuth authentication. Run: clip auth login ${alias}`,
+        );
+        process.exit(1);
+      }
       headerName = schema.auth.headerName;
     } catch {
       // No clip.yaml found, require --header
@@ -47,7 +138,7 @@ export async function authSet(
     process.exit(1);
   }
 
-  await saveCredentials(alias, { headerName, headerValue });
+  await saveCredentials(alias, { type: "header", headerName, headerValue });
   console.log(`✅ Credentials saved for "${alias}"`);
 }
 
@@ -63,8 +154,16 @@ export async function authShow(alias: string): Promise<void> {
 
   const credPath = await getCredentialsPath(alias);
   console.log(`Alias:  ${alias}`);
-  console.log(`Header: ${creds.headerName}`);
-  console.log(`Value:  ${maskValue(creds.headerValue)}`);
+  if (creds.type === "oauth") {
+    console.log("Type:   oauth");
+    if (creds.email) console.log(`Email:  ${creds.email}`);
+    if (creds.expiresAt) console.log(`Expires: ${creds.expiresAt}`);
+    console.log(`Token:  ${maskValue(creds.token)}`);
+  } else {
+    console.log("Type:   header");
+    console.log(`Header: ${creds.headerName}`);
+    console.log(`Value:  ${maskValue(creds.headerValue)}`);
+  }
   console.log(`Path:   ${credPath}`);
 }
 

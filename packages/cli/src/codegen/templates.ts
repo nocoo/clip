@@ -57,14 +57,25 @@ ${options.join("\n")}
 
   return `#!/usr/bin/env bun
 import { program } from "commander";
-${imports}
+${imports}${schema.auth.type === "oauth" ? '\nimport { loginCommand } from "./commands/_login";' : ""}
 
 program
   .name("${schema.alias}")
   .version("${schema.version}")
   .description("${schema.name}");
 
-${commands}
+${
+  schema.auth.type === "oauth"
+    ? `program
+  .command("login")
+  .description("Authenticate via browser-based OAuth flow")
+  .action(async () => {
+    await loginCommand();
+  });
+
+`
+    : ""
+}${commands}
 
 program.parse();
 `;
@@ -120,27 +131,58 @@ export const client = {
 
 /**
  * Renders the config module that reads credentials from disk.
+ *
+ * The generated `loadConfig()` returns a uniform `{ headerName, headerValue }`
+ * shape regardless of the underlying credential type:
+ * - For "header" credentials, fields are returned verbatim.
+ * - For "oauth" credentials, the configured headerName is used and the value
+ *   is `headerPrefix + " " + token` (or just the token when prefix is empty).
+ * - For legacy files without `type`, the headerName/headerValue fields are
+ *   returned as-is for backward compatibility.
  */
 export function renderConfig(schema: ClipSchema): string {
+  const auth = schema.auth;
+  const isOAuth = auth.type === "oauth";
+  const oauthHeaderName = isOAuth ? auth.headerName : "Authorization";
+  const oauthHeaderPrefix = isOAuth ? auth.headerPrefix : "Bearer";
+  const loginHint = isOAuth
+    ? `${schema.alias} login`
+    : `clip auth set ${schema.alias}`;
+
   return `import { readFile } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
 
-interface Credentials {
+interface ResolvedConfig {
   headerName: string;
   headerValue: string;
 }
 
-export async function loadConfig(): Promise<Credentials> {
+export async function loadConfig(): Promise<ResolvedConfig> {
   const clipHome = process.env.CLIP_HOME ?? join(homedir(), ".clip");
   const credPath = join(clipHome, "${schema.alias}", "credentials.json");
+  let raw: string;
   try {
-    const raw = await readFile(credPath, "utf-8");
-    return JSON.parse(raw) as Credentials;
+    raw = await readFile(credPath, "utf-8");
   } catch {
-    console.error("No credentials found. Run: clip auth set ${schema.alias}");
+    console.error("No credentials found. Run: ${loginHint}");
     process.exit(1);
   }
+
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  if (parsed.type === "oauth") {
+    const token = String(parsed.token ?? "");
+    const prefix = "${oauthHeaderPrefix}";
+    return {
+      headerName: "${oauthHeaderName}",
+      headerValue: prefix ? prefix + " " + token : token,
+    };
+  }
+  // header credentials (current or legacy)
+  return {
+    headerName: String(parsed.headerName ?? ""),
+    headerValue: String(parsed.headerValue ?? ""),
+  };
 }
 `;
 }
@@ -210,6 +252,12 @@ ${coercions.length > 0 ? `${coercions.join("\n")}\n` : ""}  const path = "${endp
  * Renders the generated package.json.
  */
 export function renderPackageJson(schema: ClipSchema): string {
+  const dependencies: Record<string, string> = {
+    commander: "^14.0.0",
+  };
+  if (schema.auth.type === "oauth") {
+    dependencies["@nocoo/cli-base"] = "^0.2.0";
+  }
   const pkg = {
     name: schema.alias,
     version: schema.version,
@@ -220,12 +268,85 @@ export function renderPackageJson(schema: ClipSchema): string {
     scripts: {
       test: "bun test",
     },
-    dependencies: {
-      commander: "^14.0.0",
-    },
+    dependencies,
   };
 
   return `${JSON.stringify(pkg, null, 2)}\n`;
+}
+
+/**
+ * Renders the OAuth login subcommand for the generated CLI.
+ *
+ * The generated `login` command opens the configured SaaS auth URL in a
+ * browser, waits for the loopback callback with the api token, and saves
+ * the result as OAuthCredentials under `~/.clip/<alias>/credentials.json`.
+ */
+export function renderLoginCommand(schema: ClipSchema): string {
+  if (schema.auth.type !== "oauth") {
+    throw new Error("renderLoginCommand requires auth.type === oauth");
+  }
+  const a = schema.auth;
+  const apiUrl = a.loginUrl ? new URL(a.loginUrl).origin : schema.baseUrl;
+  const loginPath = a.loginUrl
+    ? (() => {
+        const u = new URL(a.loginUrl);
+        return `${u.pathname}${u.search}${u.hash}`;
+      })()
+    : a.loginPath;
+  const tokenParam = a.tokenParam;
+
+  return `import { performLogin, openBrowser } from "@nocoo/cli-base";
+import { chmod, mkdir, writeFile } from "fs/promises";
+import { join } from "path";
+import { homedir } from "os";
+
+export async function loginCommand(): Promise<void> {
+  const alias = "${schema.alias}";
+  const clipHome = process.env.CLIP_HOME ?? join(homedir(), ".clip");
+  const dir = join(clipHome, alias);
+  const credPath = join(dir, "credentials.json");
+
+  console.log(\`🔐 Opening browser to log in to "\${alias}"...\`);
+
+  let savedToken: string | null = null;
+  const result = await performLogin({
+    apiUrl: "${apiUrl}",
+    loginPath: "${loginPath}",
+    tokenParam: "${tokenParam}",
+    timeoutMs: 5 * 60 * 1000,
+    openBrowser,
+    onSaveToken: (token: string) => {
+      savedToken = token;
+    },
+    log: (msg: string) => console.log(msg),
+  });
+
+  if (!result.success || !savedToken) {
+    console.error(\`❌ Login failed: \${result.error ?? "no token received"}\`);
+    process.exit(1);
+  }
+
+  await mkdir(dir, { recursive: true });
+  await chmod(dir, 0o700);
+  await writeFile(
+    credPath,
+    JSON.stringify(
+      {
+        type: "oauth",
+        token: savedToken,
+        ...(result.email ? { email: result.email } : {}),
+      },
+      null,
+      2,
+    ),
+  );
+  await chmod(credPath, 0o600);
+
+  console.log(
+    \`✅ Logged in to "\${alias}"\${result.email ? \` as \${result.email}\` : ""}\`,
+  );
+}
+`;
 }
 
 /**

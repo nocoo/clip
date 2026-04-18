@@ -39,6 +39,7 @@ describe("getClipHome", () => {
 describe("saveCredentials", () => {
   it("creates directory with 0700 permissions", async () => {
     await storage.saveCredentials("test-save", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-abc123",
     });
@@ -51,6 +52,7 @@ describe("saveCredentials", () => {
 
   it("writes file with 0600 permissions", async () => {
     await storage.saveCredentials("test-perms", {
+      type: "header",
       headerName: "Authorization",
       headerValue: "Bearer token123",
     });
@@ -62,6 +64,7 @@ describe("saveCredentials", () => {
 
   it("writes correct JSON content", async () => {
     await storage.saveCredentials("test-content", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-test-value",
     });
@@ -70,6 +73,7 @@ describe("saveCredentials", () => {
     const raw = await readFile(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     expect(parsed).toEqual({
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-test-value",
     });
@@ -77,28 +81,35 @@ describe("saveCredentials", () => {
 
   it("overwrites existing credentials", async () => {
     await storage.saveCredentials("test-overwrite", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "old-value",
     });
     await storage.saveCredentials("test-overwrite", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "new-value",
     });
 
     const creds = await storage.loadCredentials("test-overwrite");
-    expect(creds?.headerValue).toBe("new-value");
+    expect(creds?.type).toBe("header");
+    if (creds?.type === "header") {
+      expect(creds.headerValue).toBe("new-value");
+    }
   });
 });
 
 describe("loadCredentials", () => {
   it("returns credentials for existing alias", async () => {
     await storage.saveCredentials("test-load", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-load-test",
     });
 
     const creds = await storage.loadCredentials("test-load");
     expect(creds).toEqual({
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-load-test",
     });
@@ -113,6 +124,7 @@ describe("loadCredentials", () => {
 describe("removeCredentials", () => {
   it("deletes the alias directory", async () => {
     await storage.saveCredentials("test-remove", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-remove-me",
     });
@@ -154,6 +166,7 @@ describe("CLIP_HOME override", () => {
     try {
       process.env.CLIP_HOME = customHome;
       await storage.saveCredentials("custom-test", {
+        type: "header",
         headerName: "X-Key",
         headerValue: "custom-value",
       });
@@ -166,5 +179,52 @@ describe("CLIP_HOME override", () => {
       process.env.CLIP_HOME = original;
       await rm(customHome, { recursive: true, force: true });
     }
+  });
+});
+
+describe("OAuth credentials", () => {
+  it("saves and loads OAuth credentials with all fields", async () => {
+    await storage.saveCredentials("oauth-test", {
+      type: "oauth",
+      token: "oauth-secret-token",
+      email: "user@example.com",
+      expiresAt: "2026-12-31T00:00:00Z",
+    });
+
+    const creds = await storage.loadCredentials("oauth-test");
+    expect(creds).toEqual({
+      type: "oauth",
+      token: "oauth-secret-token",
+      email: "user@example.com",
+      expiresAt: "2026-12-31T00:00:00Z",
+    });
+  });
+
+  it("saves and loads OAuth credentials with only token", async () => {
+    await storage.saveCredentials("oauth-minimal", {
+      type: "oauth",
+      token: "minimal-token",
+    });
+
+    const creds = await storage.loadCredentials("oauth-minimal");
+    expect(creds).toEqual({ type: "oauth", token: "minimal-token" });
+  });
+
+  it("backward-compat: legacy file without type is treated as header", async () => {
+    // Write a legacy file directly to disk
+    const dir = join(tempDir, "legacy-alias");
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, "credentials.json"),
+      JSON.stringify({ headerName: "X-Legacy", headerValue: "legacy-value" }),
+    );
+
+    const creds = await storage.loadCredentials("legacy-alias");
+    expect(creds).toEqual({
+      type: "header",
+      headerName: "X-Legacy",
+      headerValue: "legacy-value",
+    });
   });
 });

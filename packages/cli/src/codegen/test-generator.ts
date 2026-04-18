@@ -48,7 +48,59 @@ export async function generateTests(
     writes.push(writeFile(join(testsDir, "crud-sequence.test.ts"), content));
   }
 
+  // For OAuth schemas, drop a README.md noting that tests authenticate via
+  // OAuth (CLIP_TEST_API_KEY is the OAuth token, prefixed appropriately).
+  if (schema.auth.type === "oauth") {
+    const readme = renderTestsReadme(schema);
+    writes.push(writeFile(join(testsDir, "README.md"), readme));
+  }
+
   await Promise.all(writes);
+}
+
+/**
+ * Compute the runtime header value for a CLIP_TEST_API_KEY env var:
+ * - For "header" auth: the env var value verbatim.
+ * - For "oauth" auth: the env var value is the bare token; we wrap it with
+ *   the configured headerPrefix when building the request header.
+ */
+function buildAuthHeaderExpression(schema: ClipSchema): {
+  headerName: string;
+  /** A JS template-string-like expression that produces the header value. */
+  valueExpr: string;
+} {
+  if (schema.auth.type === "oauth") {
+    const prefix = schema.auth.headerPrefix;
+    return {
+      headerName: schema.auth.headerName,
+      valueExpr: prefix ? `\`${prefix} \${API_KEY}\`` : "API_KEY",
+    };
+  }
+  return {
+    headerName: schema.auth.headerName,
+    valueExpr: "API_KEY",
+  };
+}
+
+function renderTestsReadme(schema: ClipSchema): string {
+  if (schema.auth.type !== "oauth") {
+    throw new Error("renderTestsReadme requires auth.type === oauth");
+  }
+  const auth = schema.auth;
+  return `# Generated tests
+
+This CLI uses **OAuth** authentication. Before running these tests, log in
+with the generated CLI to obtain an OAuth token:
+
+    bunx ${schema.alias} login
+
+The test runner (\`clip test ${schema.alias}\`) loads the saved OAuth token
+and exposes it through \`CLIP_TEST_API_KEY\`. Each request is signed with
+\`${auth.headerName}: ${auth.headerPrefix ? `${auth.headerPrefix} ` : ""}<token>\`.
+
+Override the base URL or token at runtime via \`CLIP_TEST_BASE_URL\` and
+\`CLIP_TEST_API_KEY\`.
+`;
 }
 
 /**
@@ -71,7 +123,8 @@ function renderEndpointTest(
         .join(",\n")},\n      }),`
     : "";
 
-  const headers = [`        "${schema.auth.headerName}": API_KEY`];
+  const auth = buildAuthHeaderExpression(schema);
+  const headers = [`        "${auth.headerName}": ${auth.valueExpr}`];
   if (hasBody) {
     headers.unshift(`        "Content-Type": "application/json"`);
   }
@@ -145,6 +198,8 @@ function renderCrudSequenceTest(
     // biome-ignore lint/suspicious/noTemplateCurlyInString: intentional template placeholder for generated code
     path.replace(new RegExp(`:${pathParamName}`, "g"), "${createdId}");
 
+  const auth = buildAuthHeaderExpression(schema);
+
   // Create step
   const createQueryParams = createEndpoint.params?.query ?? {};
   const createQueryString = buildQueryString(createQueryParams);
@@ -154,7 +209,7 @@ function renderCrudSequenceTest(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "${schema.auth.headerName}": API_KEY,
+        "${auth.headerName}": ${auth.valueExpr},
       },
       body: JSON.stringify({
 ${createBody},
@@ -175,7 +230,7 @@ ${createBody},
     const getRes = await fetch(\`\${BASE_URL}${getPath}${getUrlSuffix}\`, {
       method: "GET",
       headers: {
-        "${schema.auth.headerName}": API_KEY,
+        "${auth.headerName}": ${auth.valueExpr},
       },
     });
     expect(getRes.ok).toBe(true);`);
@@ -193,7 +248,7 @@ ${createBody},
       method: "${updateEp.method}",
       headers: {
         "Content-Type": "application/json",
-        "${schema.auth.headerName}": API_KEY,
+        "${auth.headerName}": ${auth.valueExpr},
       },${
         updateBody
           ? `
@@ -217,7 +272,7 @@ ${updateBody},
     const deleteRes = await fetch(\`\${BASE_URL}${deletePath}${deleteUrlSuffix}\`, {
       method: "DELETE",
       headers: {
-        "${schema.auth.headerName}": API_KEY,
+        "${auth.headerName}": ${auth.valueExpr},
       },
     });
     expect(deleteRes.ok).toBe(true);`);

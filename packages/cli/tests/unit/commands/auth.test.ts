@@ -28,6 +28,7 @@ describe("authSet", () => {
 
     const creds = await storage.loadCredentials("test-alias");
     expect(creds).toEqual({
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-test-123",
     });
@@ -69,6 +70,7 @@ describe("authSet", () => {
 
     const creds = await storage.loadCredentials("custom-header-alias");
     expect(creds).toEqual({
+      type: "header",
       headerName: "Authorization",
       headerValue: "bearer-token-xyz",
     });
@@ -80,6 +82,7 @@ describe("authShow", () => {
     const { authShow } = await import("../../../src/commands/auth");
 
     await storage.saveCredentials("show-test", {
+      type: "header",
       headerName: "Authorization",
       headerValue: "Bearer sk-abcdef123456",
     });
@@ -132,6 +135,7 @@ describe("authRemove", () => {
     const { authRemove } = await import("../../../src/commands/auth");
 
     await storage.saveCredentials("remove-test", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-to-remove",
     });
@@ -164,5 +168,161 @@ describe("authRemove", () => {
     console.error = originalError;
 
     expect(errorMock.mock.calls[0][0]).toContain("No credentials found");
+  });
+});
+
+describe("authLogin", () => {
+  const oauthSchema = {
+    name: "Test",
+    alias: "test-oauth",
+    version: "1.0.0",
+    baseUrl: "https://example.com",
+    auth: {
+      type: "oauth" as const,
+      tokenParam: "api_key",
+      loginPath: "/api/auth/cli",
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+    },
+    endpoints: [
+      {
+        name: "ping",
+        method: "GET" as const,
+        path: "/ping",
+        description: "Ping",
+      },
+    ],
+  };
+
+  it("saves OAuth credentials when login succeeds", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const performLogin = mock(
+      async (deps: { onSaveToken: (t: string) => void }) => {
+        deps.onSaveToken("oauth-token-xyz");
+        return { success: true, email: "user@example.com" };
+      },
+    );
+    const openBrowser = mock(async () => {});
+
+    await authLogin("login-success", {
+      parseSchema: async () => oauthSchema,
+      // biome-ignore lint/suspicious/noExplicitAny: test mock typing
+      performLogin: performLogin as any,
+      openBrowser,
+    });
+
+    expect(performLogin).toHaveBeenCalled();
+    const creds = await storage.loadCredentials("login-success");
+    expect(creds).toEqual({
+      type: "oauth",
+      token: "oauth-token-xyz",
+      email: "user@example.com",
+    });
+  });
+
+  it("exits with error when login fails", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const exitMock = mock(() => {
+      throw new Error("process.exit called");
+    });
+    const originalExit = process.exit;
+    process.exit = exitMock as never;
+
+    const errorMock = mock();
+    const originalError = console.error;
+    console.error = errorMock;
+
+    const performLogin = mock(async () => ({
+      success: false,
+      error: "user cancelled",
+    }));
+
+    try {
+      await authLogin("login-fail", {
+        parseSchema: async () => oauthSchema,
+        // biome-ignore lint/suspicious/noExplicitAny: test mock typing
+        performLogin: performLogin as any,
+        openBrowser: mock(async () => {}),
+      });
+    } catch {
+      // expected — exit mock throws
+    }
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls[0][0]).toContain("Login failed");
+
+    process.exit = originalExit;
+    console.error = originalError;
+  });
+
+  it("rejects header-auth schemas", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const exitMock = mock(() => {
+      throw new Error("process.exit called");
+    });
+    const originalExit = process.exit;
+    process.exit = exitMock as never;
+
+    const errorMock = mock();
+    const originalError = console.error;
+    console.error = errorMock;
+
+    try {
+      await authLogin("wrong-type", {
+        parseSchema: async () => ({
+          ...oauthSchema,
+          auth: { type: "header" as const, headerName: "X-API-Key" },
+        }),
+        performLogin: mock(async () => ({ success: true })) as never,
+        openBrowser: mock(async () => {}),
+      });
+    } catch {
+      // expected
+    }
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls[0][0]).toContain("header authentication");
+
+    process.exit = originalExit;
+    console.error = originalError;
+  });
+
+  it("uses loginUrl origin and pathname when provided", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const captured: { apiUrl?: string; loginPath?: string } = {};
+    const performLogin = mock(
+      async (deps: {
+        apiUrl: string;
+        loginPath: string;
+        onSaveToken: (t: string) => void;
+      }) => {
+        captured.apiUrl = deps.apiUrl;
+        captured.loginPath = deps.loginPath;
+        deps.onSaveToken("t");
+        return { success: true };
+      },
+    );
+
+    await authLogin("login-url", {
+      parseSchema: async () => ({
+        ...oauthSchema,
+        auth: {
+          ...oauthSchema.auth,
+          loginUrl: "https://saas.example.org/custom/login",
+        },
+      }),
+      // biome-ignore lint/suspicious/noExplicitAny: test mock typing
+      performLogin: performLogin as any,
+      openBrowser: mock(async () => {}),
+    });
+
+    expect(captured).toEqual({
+      apiUrl: "https://saas.example.org",
+      loginPath: "/custom/login",
+    });
   });
 });

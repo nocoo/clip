@@ -77,15 +77,31 @@ const EndpointSchema = z.object({
   response: ResponseSchemaZod.optional(),
 });
 
+const HeaderAuthSchema = z.object({
+  type: z.literal("header"),
+  headerName: z.string().min(1),
+});
+
+const OAuthAuthSchema = z.object({
+  type: z.literal("oauth"),
+  loginUrl: z.string().url().optional(),
+  tokenParam: z.string().min(1).default("api_key"),
+  loginPath: z.string().startsWith("/").default("/api/auth/cli"),
+  headerName: z.string().min(1).default("Authorization"),
+  headerPrefix: z.string().default("Bearer"),
+});
+
+const AuthSchema = z.discriminatedUnion("type", [
+  HeaderAuthSchema,
+  OAuthAuthSchema,
+]);
+
 export const ClipSchemaZod = z.object({
   name: z.string().min(1),
   alias: z.string().regex(aliasPattern),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   baseUrl: z.string().url(),
-  auth: z.object({
-    type: z.literal("header"),
-    headerName: z.string().min(1),
-  }),
+  auth: AuthSchema,
   endpoints: z.array(EndpointSchema).min(1),
 });
 
@@ -142,6 +158,19 @@ export function validateSemantics(schema: ClipSchema): ValidationError[] {
       });
     }
     methodPaths.add(key);
+  }
+
+  // 5. Reserved endpoint names for OAuth (login/logout collide with generated commands)
+  if (schema.auth.type === "oauth") {
+    const reserved = new Set(["login", "logout"]);
+    for (const ep of schema.endpoints) {
+      if (reserved.has(ep.name)) {
+        errors.push({
+          path: `endpoints.${ep.name}`,
+          message: `Endpoint name "${ep.name}" is reserved for OAuth schemas (collides with generated command)`,
+        });
+      }
+    }
   }
 
   return errors;
