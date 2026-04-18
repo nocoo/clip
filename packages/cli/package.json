@@ -11,6 +11,7 @@
   },
   "devDependencies": {},
   "dependencies": {
+    "@nocoo/cli-base": "^0.2.3",
     "commander": "^14.0.3",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
