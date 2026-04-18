@@ -160,5 +160,18 @@ export function validateSemantics(schema: ClipSchema): ValidationError[] {
     methodPaths.add(key);
   }
 
+  // 5. Reserved endpoint names for OAuth (login/logout collide with generated commands)
+  if (schema.auth.type === "oauth") {
+    const reserved = new Set(["login", "logout"]);
+    for (const ep of schema.endpoints) {
+      if (reserved.has(ep.name)) {
+        errors.push({
+          path: `endpoints.${ep.name}`,
+          message: `Endpoint name "${ep.name}" is reserved for OAuth schemas (collides with generated command)`,
+        });
+      }
+    }
+  }
+
   return errors;
 }

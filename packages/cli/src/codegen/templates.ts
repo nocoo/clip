@@ -146,7 +146,7 @@ export function renderConfig(schema: ClipSchema): string {
   const oauthHeaderName = isOAuth ? auth.headerName : "Authorization";
   const oauthHeaderPrefix = isOAuth ? auth.headerPrefix : "Bearer";
   const loginHint = isOAuth
-    ? `clip auth login ${schema.alias}`
+    ? `${schema.alias} login`
     : `clip auth set ${schema.alias}`;
 
   return `import { readFile } from "fs/promises";
@@ -287,7 +287,12 @@ export function renderLoginCommand(schema: ClipSchema): string {
   }
   const a = schema.auth;
   const apiUrl = a.loginUrl ? new URL(a.loginUrl).origin : schema.baseUrl;
-  const loginPath = a.loginUrl ? new URL(a.loginUrl).pathname : a.loginPath;
+  const loginPath = a.loginUrl
+    ? (() => {
+        const u = new URL(a.loginUrl);
+        return `${u.pathname}${u.search}${u.hash}`;
+      })()
+    : a.loginPath;
   const tokenParam = a.tokenParam;
 
   return `import { performLogin, openBrowser } from "@nocoo/cli-base";

@@ -445,7 +445,7 @@ describe("generateCli — OAuth schemas", () => {
     expect(configContent).toContain('"Authorization"');
     expect(configContent).toContain('"Bearer"');
     // Login hint points users at the login subcommand for OAuth aliases
-    expect(configContent).toContain("clip auth login oapi");
+    expect(configContent).toContain("oapi login");
   });
 
   it("adds @nocoo/cli-base to generated package.json for OAuth schemas", async () => {

@@ -581,4 +581,63 @@ describe("validateSemantics", () => {
     // duplicate name, undeclared :id, orphan slug, undeclared :id (2nd ep), duplicate method+path
     expect(errors.length).toBeGreaterThanOrEqual(4);
   });
+
+  describe("OAuth reserved endpoint names", () => {
+    function makeOAuthSchema(endpoints: ClipSchema["endpoints"]): ClipSchema {
+      return {
+        name: "OAuth API",
+        alias: "oapi",
+        version: "1.0.0",
+        baseUrl: "https://api.example.com",
+        auth: {
+          type: "oauth",
+          tokenParam: "api_key",
+          loginPath: "/api/auth/cli",
+          headerName: "Authorization",
+          headerPrefix: "Bearer",
+        },
+        endpoints,
+      };
+    }
+
+    it("rejects endpoint named 'login' for OAuth schemas", () => {
+      const schema = makeOAuthSchema([
+        {
+          name: "login",
+          method: "POST",
+          path: "/login",
+          description: "Login",
+        },
+      ]);
+      const errors = validateSemantics(schema);
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors.some((e) => e.message.includes('"login"'))).toBe(true);
+    });
+
+    it("rejects endpoint named 'logout' for OAuth schemas", () => {
+      const schema = makeOAuthSchema([
+        {
+          name: "logout",
+          method: "POST",
+          path: "/logout",
+          description: "Logout",
+        },
+      ]);
+      const errors = validateSemantics(schema);
+      expect(errors.length).toBeGreaterThanOrEqual(1);
+      expect(errors.some((e) => e.message.includes('"logout"'))).toBe(true);
+    });
+
+    it("allows 'login' endpoint for header-auth schemas", () => {
+      const schema = makeSchema([
+        {
+          name: "login",
+          method: "POST",
+          path: "/login",
+          description: "Login",
+        },
+      ]);
+      expect(validateSemantics(schema)).toEqual([]);
+    });
+  });
 });
