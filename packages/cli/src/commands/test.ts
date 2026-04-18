@@ -45,11 +45,17 @@ export async function testCommand(
   // Load credentials
   const creds = await loadCredentials(alias);
 
+  // Extract a token-like value to expose as CLIP_TEST_API_KEY for both
+  // header-based and OAuth-based generated tests.
+  let credValue = "";
+  if (creds?.type === "header") credValue = creds.headerValue;
+  else if (creds?.type === "oauth") credValue = creds.token;
+
   const env = {
     ...process.env,
     CLIP_TEST_BASE_URL:
       options.baseUrl || process.env.CLIP_BASE_URL || metadata.baseUrl,
-    CLIP_TEST_API_KEY: options.apiKey || creds?.headerValue || "",
+    CLIP_TEST_API_KEY: options.apiKey || credValue,
   };
 
   const proc = Bun.spawn(["bun", "test"], {

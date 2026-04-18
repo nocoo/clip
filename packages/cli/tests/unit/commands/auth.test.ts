@@ -28,6 +28,7 @@ describe("authSet", () => {
 
     const creds = await storage.loadCredentials("test-alias");
     expect(creds).toEqual({
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-test-123",
     });
@@ -69,6 +70,7 @@ describe("authSet", () => {
 
     const creds = await storage.loadCredentials("custom-header-alias");
     expect(creds).toEqual({
+      type: "header",
       headerName: "Authorization",
       headerValue: "bearer-token-xyz",
     });
@@ -80,6 +82,7 @@ describe("authShow", () => {
     const { authShow } = await import("../../../src/commands/auth");
 
     await storage.saveCredentials("show-test", {
+      type: "header",
       headerName: "Authorization",
       headerValue: "Bearer sk-abcdef123456",
     });
@@ -132,6 +135,7 @@ describe("authRemove", () => {
     const { authRemove } = await import("../../../src/commands/auth");
 
     await storage.saveCredentials("remove-test", {
+      type: "header",
       headerName: "X-API-Key",
       headerValue: "sk-to-remove",
     });

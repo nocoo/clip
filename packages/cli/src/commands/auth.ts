@@ -20,6 +20,12 @@ export async function authSet(
     try {
       const { parseClipSchema } = await import("../schema/parser");
       const schema = await parseClipSchema("clip.yaml");
+      if (schema.auth.type === "oauth") {
+        console.error(
+          `❌ This CLI uses OAuth authentication. Run: clip auth login ${alias}`,
+        );
+        process.exit(1);
+      }
       headerName = schema.auth.headerName;
     } catch {
       // No clip.yaml found, require --header
@@ -47,7 +53,7 @@ export async function authSet(
     process.exit(1);
   }
 
-  await saveCredentials(alias, { headerName, headerValue });
+  await saveCredentials(alias, { type: "header", headerName, headerValue });
   console.log(`✅ Credentials saved for "${alias}"`);
 }
 
@@ -63,8 +69,16 @@ export async function authShow(alias: string): Promise<void> {
 
   const credPath = await getCredentialsPath(alias);
   console.log(`Alias:  ${alias}`);
-  console.log(`Header: ${creds.headerName}`);
-  console.log(`Value:  ${maskValue(creds.headerValue)}`);
+  if (creds.type === "oauth") {
+    console.log("Type:   oauth");
+    if (creds.email) console.log(`Email:  ${creds.email}`);
+    if (creds.expiresAt) console.log(`Expires: ${creds.expiresAt}`);
+    console.log(`Token:  ${maskValue(creds.token)}`);
+  } else {
+    console.log("Type:   header");
+    console.log(`Header: ${creds.headerName}`);
+    console.log(`Value:  ${maskValue(creds.headerValue)}`);
+  }
   console.log(`Path:   ${credPath}`);
 }
 
