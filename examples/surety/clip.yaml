@@ -1,0 +1,524 @@
+name: "Surety - 家庭保单管理"
+alias: surety
+version: "1.0.0"
+baseUrl: "http://localhost:7012"
+auth:
+  type: oauth
+  loginPath: "/api/auth/cli"
+  tokenParam: "api_key"
+  headerName: "Authorization"
+  headerPrefix: "Bearer"
+
+endpoints:
+  # -------------------- Members --------------------
+  - name: list-members
+    method: GET
+    path: /api/members
+    description: "List all family members"
+
+  - name: get-member
+    method: GET
+    path: "/api/members/:id"
+    description: "Get a member by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-member
+    method: POST
+    path: /api/members
+    description: "Create a new family member"
+    params:
+      body:
+        name: { type: string, required: true }
+        relation:
+          type: string
+          required: true
+          enum: [Self, Spouse, Child, Parent, ParentInLaw, Sibling, Other]
+        gender: { type: string, enum: [Male, Female, Other] }
+        birthDate: { type: string, description: "ISO date (YYYY-MM-DD)" }
+        phone: { type: string }
+        idCard: { type: string }
+        idType: { type: string, enum: [IdCard, Passport, Other] }
+        hasSocialInsurance: { type: boolean }
+
+  - name: update-member
+    method: PUT
+    path: "/api/members/:id"
+    description: "Update a family member"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        name: { type: string }
+        relation:
+          type: string
+          enum: [Self, Spouse, Child, Parent, ParentInLaw, Sibling, Other]
+        gender: { type: string, enum: [Male, Female, Other] }
+        birthDate: { type: string }
+        phone: { type: string }
+        idCard: { type: string }
+        idType: { type: string, enum: [IdCard, Passport, Other] }
+        hasSocialInsurance: { type: boolean }
+
+  - name: delete-member
+    method: DELETE
+    path: "/api/members/:id"
+    description: "Delete a family member"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Policies --------------------
+  - name: list-policies
+    method: GET
+    path: /api/policies
+    description: "List policies (filterable by status, category, member)"
+    params:
+      query:
+        status:
+          type: string
+          enum: [Active, Lapsed, Surrendered, Claimed]
+        category:
+          type: string
+          enum: [Life, CriticalIllness, Medical, Accident, Annuity, Property]
+        memberId: { type: string }
+
+  - name: get-policy
+    method: GET
+    path: "/api/policies/:id"
+    description: "Get a policy by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-policy
+    method: POST
+    path: /api/policies
+    description: "Create a new policy"
+    params:
+      body:
+        productName: { type: string, required: true }
+        policyNumber: { type: string }
+        category:
+          type: string
+          required: true
+          enum: [Life, CriticalIllness, Medical, Accident, Annuity, Property]
+        status:
+          type: string
+          enum: [Active, Lapsed, Surrendered, Claimed]
+        insuredMemberId: { type: string }
+        applicantId: { type: string }
+        insurerId: { type: string }
+        premium: { type: number }
+        sumAssured: { type: number }
+        paymentFrequency: { type: string }
+        startDate: { type: string }
+        expiryDate: { type: string }
+        totalPayments: { type: number }
+        cashValueTotal: { type: number }
+
+  - name: update-policy
+    method: PUT
+    path: "/api/policies/:id"
+    description: "Update a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        productName: { type: string }
+        policyNumber: { type: string }
+        category:
+          type: string
+          enum: [Life, CriticalIllness, Medical, Accident, Annuity, Property]
+        status:
+          type: string
+          enum: [Active, Lapsed, Surrendered, Claimed]
+        insuredMemberId: { type: string }
+        applicantId: { type: string }
+        insurerId: { type: string }
+        premium: { type: number }
+        sumAssured: { type: number }
+        paymentFrequency: { type: string }
+        startDate: { type: string }
+        expiryDate: { type: string }
+        totalPayments: { type: number }
+        cashValueTotal: { type: number }
+
+  - name: delete-policy
+    method: DELETE
+    path: "/api/policies/:id"
+    description: "Delete a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Insurers --------------------
+  - name: list-insurers
+    method: GET
+    path: /api/insurers
+    description: "List all insurers"
+
+  - name: get-insurer
+    method: GET
+    path: "/api/insurers/:id"
+    description: "Get an insurer by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-insurer
+    method: POST
+    path: /api/insurers
+    description: "Create a new insurer"
+    params:
+      body:
+        name: { type: string, required: true }
+        shortName: { type: string }
+        phone: { type: string }
+        website: { type: string }
+        address: { type: string }
+
+  - name: update-insurer
+    method: PUT
+    path: "/api/insurers/:id"
+    description: "Update an insurer"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        name: { type: string }
+        shortName: { type: string }
+        phone: { type: string }
+        website: { type: string }
+        address: { type: string }
+
+  - name: delete-insurer
+    method: DELETE
+    path: "/api/insurers/:id"
+    description: "Delete an insurer"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Assets --------------------
+  - name: list-assets
+    method: GET
+    path: /api/assets
+    description: "List all insurable assets"
+
+  - name: get-asset
+    method: GET
+    path: "/api/assets/:id"
+    description: "Get an asset by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-asset
+    method: POST
+    path: /api/assets
+    description: "Create a new asset"
+    params:
+      body:
+        name: { type: string, required: true }
+        type:
+          type: string
+          required: true
+          enum: [House, Car, Other]
+        ownerId: { type: string }
+        value: { type: number }
+        address: { type: string }
+
+  - name: update-asset
+    method: PUT
+    path: "/api/assets/:id"
+    description: "Update an asset"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        name: { type: string }
+        type:
+          type: string
+          enum: [House, Car, Other]
+        ownerId: { type: string }
+        value: { type: number }
+        address: { type: string }
+
+  - name: delete-asset
+    method: DELETE
+    path: "/api/assets/:id"
+    description: "Delete an asset"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Doctors --------------------
+  - name: list-doctors
+    method: GET
+    path: /api/doctors
+    description: "List all doctors"
+
+  - name: get-doctor
+    method: GET
+    path: "/api/doctors/:id"
+    description: "Get a doctor by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-doctor
+    method: POST
+    path: /api/doctors
+    description: "Create a new doctor"
+    params:
+      body:
+        name: { type: string, required: true }
+        hospital: { type: string }
+        department: { type: string }
+        phone: { type: string }
+        notes: { type: string }
+
+  - name: update-doctor
+    method: PUT
+    path: "/api/doctors/:id"
+    description: "Update a doctor"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        name: { type: string }
+        hospital: { type: string }
+        department: { type: string }
+        phone: { type: string }
+        notes: { type: string }
+
+  - name: delete-doctor
+    method: DELETE
+    path: "/api/doctors/:id"
+    description: "Delete a doctor"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Hospitals --------------------
+  - name: list-hospitals
+    method: GET
+    path: /api/hospitals
+    description: "List all hospitals"
+
+  - name: get-hospital
+    method: GET
+    path: "/api/hospitals/:id"
+    description: "Get a hospital by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-hospital
+    method: POST
+    path: /api/hospitals
+    description: "Create a new hospital"
+    params:
+      body:
+        name: { type: string, required: true }
+        level: { type: string }
+        address: { type: string }
+        phone: { type: string }
+
+  - name: update-hospital
+    method: PUT
+    path: "/api/hospitals/:id"
+    description: "Update a hospital"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        name: { type: string }
+        level: { type: string }
+        address: { type: string }
+        phone: { type: string }
+
+  - name: delete-hospital
+    method: DELETE
+    path: "/api/hospitals/:id"
+    description: "Delete a hospital"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Medical Visits --------------------
+  - name: list-medical-visits
+    method: GET
+    path: /api/medical-visits
+    description: "List all medical visits"
+
+  - name: get-medical-visit
+    method: GET
+    path: "/api/medical-visits/:id"
+    description: "Get a medical visit by ID"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-medical-visit
+    method: POST
+    path: /api/medical-visits
+    description: "Record a new medical visit"
+    params:
+      body:
+        memberId: { type: string, required: true }
+        visitDate: { type: string, required: true, description: "ISO date" }
+        hospital: { type: string }
+        doctor: { type: string }
+        department: { type: string }
+        diagnosis: { type: string }
+        visitType:
+          type: string
+          enum: [Outpatient, Inpatient, Emergency, Checkup, Other]
+        amount: { type: number }
+        notes: { type: string }
+
+  - name: update-medical-visit
+    method: PUT
+    path: "/api/medical-visits/:id"
+    description: "Update a medical visit"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        memberId: { type: string }
+        visitDate: { type: string }
+        hospital: { type: string }
+        doctor: { type: string }
+        department: { type: string }
+        diagnosis: { type: string }
+        visitType:
+          type: string
+          enum: [Outpatient, Inpatient, Emergency, Checkup, Other]
+        amount: { type: number }
+        notes: { type: string }
+
+  - name: delete-medical-visit
+    method: DELETE
+    path: "/api/medical-visits/:id"
+    description: "Delete a medical visit"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  # -------------------- Policy sub-resources --------------------
+  - name: list-beneficiaries
+    method: GET
+    path: "/api/policies/:id/beneficiaries"
+    description: "List beneficiaries of a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: list-payments
+    method: GET
+    path: "/api/policies/:id/payments"
+    description: "List scheduled payments of a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-payment
+    method: POST
+    path: "/api/policies/:id/payments"
+    description: "Add a payment to a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        periodNumber: { type: number }
+        dueDate: { type: string }
+        amount: { type: number }
+        status: { type: string }
+
+  - name: delete-payment
+    method: DELETE
+    path: "/api/policies/:id/payments/:paymentId"
+    description: "Delete a payment from a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+        paymentId: { type: string, required: true }
+
+  - name: generate-payments
+    method: POST
+    path: "/api/policies/:id/payments/generate"
+    description: "Auto-generate scheduled payments up to a cutoff date"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        cutoffDate: { type: string }
+
+  - name: list-coverage-items
+    method: GET
+    path: "/api/policies/:id/coverage-items"
+    description: "List coverage items for a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create-coverage-item
+    method: POST
+    path: "/api/policies/:id/coverage-items"
+    description: "Add a coverage item to a policy"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        name: { type: string, required: true }
+        coverageAmount: { type: number }
+        waitingDays: { type: number }
+        description: { type: string }
+
+  - name: update-coverage-item
+    method: PUT
+    path: "/api/policies/:id/coverage-items/:itemId"
+    description: "Update a coverage item"
+    params:
+      path:
+        id: { type: string, required: true }
+        itemId: { type: string, required: true }
+      body:
+        name: { type: string }
+        coverageAmount: { type: number }
+        waitingDays: { type: number }
+        description: { type: string }
+
+  - name: delete-coverage-item
+    method: DELETE
+    path: "/api/policies/:id/coverage-items/:itemId"
+    description: "Delete a coverage item"
+    params:
+      path:
+        id: { type: string, required: true }
+        itemId: { type: string, required: true }
+
+  # -------------------- Read-only views --------------------
+  - name: dashboard
+    method: GET
+    path: /api/dashboard
+    description: "Aggregate dashboard view (counts, totals, upcoming renewals)"
+
+  - name: renewal-calendar
+    method: GET
+    path: /api/renewal-calendar
+    description: "Upcoming renewal/payment calendar"
+
+  - name: coverage-lookup
+    method: GET
+    path: /api/coverage-lookup
+    description: "Look up coverage by member or asset"
+    params:
+      query:
+        type:
+          type: string
+          enum: [member, asset]
+        id: { type: string }
