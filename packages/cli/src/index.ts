@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { program } from "commander";
-import { authRemove, authSet, authShow } from "./commands/auth";
+import { authLogin, authRemove, authSet, authShow } from "./commands/auth";
 import { generate } from "./commands/generate";
 import { install } from "./commands/install";
 import { testCommand } from "./commands/test";
@@ -41,6 +41,13 @@ auth
   .option("--header <name>", "Auth header name")
   .action(async (alias: string, opts: { key?: string; header?: string }) => {
     await authSet(alias, opts);
+  });
+
+auth
+  .command("login <alias>")
+  .description("Authenticate via browser-based OAuth flow")
+  .action(async (alias: string) => {
+    await authLogin(alias);
   });
 
 auth
