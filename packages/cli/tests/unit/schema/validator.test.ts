@@ -180,6 +180,77 @@ describe("ClipSchemaZod", () => {
         ),
       ).toThrow(ZodError);
     });
+
+    describe("oauth", () => {
+      it("validates a minimal oauth auth and applies defaults", () => {
+        const result = ClipSchemaZod.parse(
+          validSchema({ auth: { type: "oauth" } }),
+        );
+        expect(result.auth.type).toBe("oauth");
+        if (result.auth.type === "oauth") {
+          expect(result.auth.tokenParam).toBe("api_key");
+          expect(result.auth.loginPath).toBe("/api/auth/cli");
+          expect(result.auth.headerName).toBe("Authorization");
+          expect(result.auth.headerPrefix).toBe("Bearer");
+          expect(result.auth.loginUrl).toBeUndefined();
+        }
+      });
+
+      it("validates a full oauth auth with all fields set", () => {
+        const result = ClipSchemaZod.parse(
+          validSchema({
+            auth: {
+              type: "oauth",
+              loginUrl: "https://example.com/api/auth/cli",
+              tokenParam: "token",
+              loginPath: "/login",
+              headerName: "X-Auth",
+              headerPrefix: "Token",
+            },
+          }),
+        );
+        if (result.auth.type === "oauth") {
+          expect(result.auth.loginUrl).toBe("https://example.com/api/auth/cli");
+          expect(result.auth.tokenParam).toBe("token");
+          expect(result.auth.loginPath).toBe("/login");
+          expect(result.auth.headerName).toBe("X-Auth");
+          expect(result.auth.headerPrefix).toBe("Token");
+        }
+      });
+
+      it("rejects invalid loginUrl", () => {
+        expect(() =>
+          ClipSchemaZod.parse(
+            validSchema({ auth: { type: "oauth", loginUrl: "not-a-url" } }),
+          ),
+        ).toThrow(ZodError);
+      });
+
+      it("rejects loginPath not starting with /", () => {
+        expect(() =>
+          ClipSchemaZod.parse(
+            validSchema({ auth: { type: "oauth", loginPath: "api/auth" } }),
+          ),
+        ).toThrow(ZodError);
+      });
+
+      it("rejects empty headerName for oauth", () => {
+        expect(() =>
+          ClipSchemaZod.parse(
+            validSchema({ auth: { type: "oauth", headerName: "" } }),
+          ),
+        ).toThrow(ZodError);
+      });
+
+      it("allows empty headerPrefix for tokens without prefix", () => {
+        const result = ClipSchemaZod.parse(
+          validSchema({ auth: { type: "oauth", headerPrefix: "" } }),
+        );
+        if (result.auth.type === "oauth") {
+          expect(result.auth.headerPrefix).toBe("");
+        }
+      });
+    });
   });
 
   // --- Endpoint validation ---
