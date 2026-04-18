@@ -365,3 +365,162 @@ describe("generateCli", () => {
     expect(cmdContent).toMatch(/true|=== "true"/);
   });
 });
+
+describe("generateCli — OAuth schemas", () => {
+  const OAUTH_SCHEMA: ClipSchema = {
+    name: "OAuth API",
+    alias: "oapi",
+    version: "1.0.0",
+    baseUrl: "https://api.example.com",
+    auth: {
+      type: "oauth",
+      loginUrl: "https://app.example.com/auth/cli",
+      tokenParam: "token",
+      loginPath: "/auth/cli",
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+    },
+    endpoints: [
+      {
+        name: "list",
+        method: "GET",
+        path: "/items",
+        description: "List items",
+      },
+    ],
+  };
+
+  it("emits a _login.ts command file", async () => {
+    const outputDir = join(tempDir, "oauth-login-cmd");
+    await generateCli(OAUTH_SCHEMA, outputDir);
+
+    const loginContent = await readFile(
+      join(outputDir, "src/commands/_login.ts"),
+      "utf-8",
+    );
+
+    expect(loginContent).toContain('from "@nocoo/cli-base"');
+    expect(loginContent).toContain("performLogin");
+    expect(loginContent).toContain("openBrowser");
+    expect(loginContent).toContain('"oapi"');
+    // loginUrl was provided, so apiUrl/loginPath should be derived from it
+    expect(loginContent).toContain('"https://app.example.com"');
+    expect(loginContent).toContain('"/auth/cli"');
+    expect(loginContent).toContain('"token"');
+    // Persists OAuth credentials with type tag and 0600 permissions
+    expect(loginContent).toContain('type: "oauth"');
+    expect(loginContent).toContain("0o600");
+    expect(loginContent).toContain("0o700");
+  });
+
+  it("registers a 'login' subcommand in index.ts", async () => {
+    const outputDir = join(tempDir, "oauth-index");
+    await generateCli(OAUTH_SCHEMA, outputDir);
+
+    const indexContent = await readFile(
+      join(outputDir, "src/index.ts"),
+      "utf-8",
+    );
+
+    expect(indexContent).toContain('from "./commands/_login"');
+    expect(indexContent).toContain('.command("login")');
+    expect(indexContent).toContain("loginCommand()");
+  });
+
+  it("renders a unified loadConfig that resolves OAuth credentials", async () => {
+    const outputDir = join(tempDir, "oauth-config");
+    await generateCli(OAUTH_SCHEMA, outputDir);
+
+    const configContent = await readFile(
+      join(outputDir, "src/config.ts"),
+      "utf-8",
+    );
+
+    // Returns the uniform { headerName, headerValue } shape
+    expect(configContent).toContain("headerName: string");
+    expect(configContent).toContain("headerValue: string");
+    // Branch on the credential type tag
+    expect(configContent).toContain('parsed.type === "oauth"');
+    // Uses the configured headerName + prefix when constructing the value
+    expect(configContent).toContain('"Authorization"');
+    expect(configContent).toContain('"Bearer"');
+    // Login hint points users at the login subcommand for OAuth aliases
+    expect(configContent).toContain("clip auth login oapi");
+  });
+
+  it("adds @nocoo/cli-base to generated package.json for OAuth schemas", async () => {
+    const outputDir = join(tempDir, "oauth-pkg");
+    await generateCli(OAUTH_SCHEMA, outputDir);
+
+    const pkg = JSON.parse(
+      await readFile(join(outputDir, "package.json"), "utf-8"),
+    );
+
+    expect(pkg.dependencies["@nocoo/cli-base"]).toBeDefined();
+    expect(pkg.dependencies.commander).toBeDefined();
+  });
+
+  it("does NOT add @nocoo/cli-base for header-auth schemas", async () => {
+    const outputDir = join(tempDir, "header-pkg");
+    await generateCli(SAMPLE_SCHEMA, outputDir);
+
+    const pkg = JSON.parse(
+      await readFile(join(outputDir, "package.json"), "utf-8"),
+    );
+
+    expect(pkg.dependencies["@nocoo/cli-base"]).toBeUndefined();
+  });
+
+  it("clip-metadata.json captures the OAuth login parameters", async () => {
+    const outputDir = join(tempDir, "oauth-meta");
+    await generateCli(OAUTH_SCHEMA, outputDir);
+
+    const meta = JSON.parse(
+      await readFile(join(outputDir, "clip-metadata.json"), "utf-8"),
+    );
+
+    expect(meta.auth.type).toBe("oauth");
+    expect(meta.auth.headerName).toBe("Authorization");
+    expect(meta.auth.headerPrefix).toBe("Bearer");
+    expect(meta.auth.loginPath).toBe("/auth/cli");
+    expect(meta.auth.tokenParam).toBe("token");
+    expect(meta.auth.loginUrl).toBe("https://app.example.com/auth/cli");
+  });
+
+  it("falls back to baseUrl + loginPath when loginUrl is omitted", async () => {
+    const noLoginUrlSchema: ClipSchema = {
+      ...OAUTH_SCHEMA,
+      auth: {
+        type: "oauth",
+        tokenParam: "api_key",
+        loginPath: "/api/auth/cli",
+        headerName: "Authorization",
+        headerPrefix: "Bearer",
+      },
+    };
+
+    const outputDir = join(tempDir, "oauth-no-login-url");
+    await generateCli(noLoginUrlSchema, outputDir);
+
+    const loginContent = await readFile(
+      join(outputDir, "src/commands/_login.ts"),
+      "utf-8",
+    );
+
+    expect(loginContent).toContain('"https://api.example.com"');
+    expect(loginContent).toContain('"/api/auth/cli"');
+  });
+
+  it("does not generate _login.ts for header-auth schemas", async () => {
+    const outputDir = join(tempDir, "header-no-login");
+    await generateCli(SAMPLE_SCHEMA, outputDir);
+
+    const { Glob } = await import("bun");
+    const glob = new Glob("src/commands/*.ts");
+    const files: string[] = [];
+    for await (const file of glob.scan({ cwd: outputDir })) {
+      files.push(file);
+    }
+    expect(files).not.toContain("src/commands/_login.ts");
+  });
+});

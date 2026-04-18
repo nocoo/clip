@@ -575,3 +575,128 @@ describe("generateTests", () => {
     expect(testFiles).not.toContain("tests/crud-sequence.test.ts");
   });
 });
+
+describe("generateTests — OAuth schemas", () => {
+  const OAUTH_SCHEMA: ClipSchema = {
+    name: "OAuth API",
+    alias: "oapi",
+    version: "1.0.0",
+    baseUrl: "https://api.example.com",
+    auth: {
+      type: "oauth",
+      tokenParam: "api_key",
+      loginPath: "/api/auth/cli",
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+    },
+    endpoints: [
+      {
+        name: "list",
+        method: "GET",
+        path: "/items",
+        description: "List items",
+      },
+      {
+        name: "create",
+        method: "POST",
+        path: "/items",
+        description: "Create item",
+        params: { body: { name: { type: "string", required: true } } },
+      },
+      {
+        name: "get",
+        method: "GET",
+        path: "/items/:id",
+        description: "Get item",
+        params: { path: { id: { type: "string", required: true } } },
+      },
+      {
+        name: "delete",
+        method: "DELETE",
+        path: "/items/:id",
+        description: "Delete item",
+        params: { path: { id: { type: "string", required: true } } },
+      },
+    ],
+  };
+
+  it("wraps API_KEY with the OAuth header prefix in standalone tests", async () => {
+    const outputDir = join(tempDir, "oauth-standalone");
+    await generateTests(OAUTH_SCHEMA, outputDir);
+
+    const listContent = await readFile(
+      join(outputDir, "tests/list.test.ts"),
+      "utf-8",
+    );
+
+    // The header value is templated with the configured prefix
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: literal expected substring in generated source
+    expect(listContent).toContain('"Authorization": `Bearer ${API_KEY}`');
+    // The bare 'API_KEY' should not be used as the auth value verbatim
+    expect(listContent).not.toMatch(/"Authorization":\s*API_KEY\b/);
+  });
+
+  it("wraps API_KEY with the OAuth header prefix in CRUD sequence tests", async () => {
+    const outputDir = join(tempDir, "oauth-crud");
+    await generateTests(OAUTH_SCHEMA, outputDir);
+
+    const crudContent = await readFile(
+      join(outputDir, "tests/crud-sequence.test.ts"),
+      "utf-8",
+    );
+
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: literal expected substring in generated source
+    expect(crudContent).toContain('"Authorization": `Bearer ${API_KEY}`');
+    // Every step uses the prefixed header — no bare API_KEY as header value
+    expect(crudContent).not.toMatch(/"Authorization":\s*API_KEY\b/);
+  });
+
+  it("emits a tests/README.md for OAuth schemas", async () => {
+    const outputDir = join(tempDir, "oauth-readme");
+    await generateTests(OAUTH_SCHEMA, outputDir);
+
+    const readme = await readFile(join(outputDir, "tests/README.md"), "utf-8");
+
+    expect(readme).toContain("OAuth");
+    expect(readme).toContain("bunx oapi login");
+    expect(readme).toContain("CLIP_TEST_API_KEY");
+    expect(readme).toContain("Authorization: Bearer <token>");
+  });
+
+  it("does not emit a README.md for header-auth schemas", async () => {
+    const outputDir = join(tempDir, "header-no-readme");
+    await generateTests(SAMPLE_SCHEMA, outputDir);
+
+    const { Glob } = await import("bun");
+    const glob = new Glob("tests/*");
+    const files: string[] = [];
+    for await (const file of glob.scan({ cwd: outputDir })) {
+      files.push(file);
+    }
+
+    expect(files).not.toContain("tests/README.md");
+  });
+
+  it("uses bare API_KEY when headerPrefix is empty", async () => {
+    const noPrefixSchema: ClipSchema = {
+      ...OAUTH_SCHEMA,
+      auth: {
+        type: "oauth",
+        tokenParam: "api_key",
+        loginPath: "/api/auth/cli",
+        headerName: "X-Token",
+        headerPrefix: "",
+      },
+    };
+
+    const outputDir = join(tempDir, "oauth-no-prefix");
+    await generateTests(noPrefixSchema, outputDir);
+
+    const listContent = await readFile(
+      join(outputDir, "tests/list.test.ts"),
+      "utf-8",
+    );
+
+    expect(listContent).toContain('"X-Token": API_KEY');
+  });
+});
