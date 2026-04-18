@@ -6,6 +6,7 @@ import {
   renderCommand,
   renderConfig,
   renderIndex,
+  renderLoginCommand,
   renderPackageJson,
   renderTsconfig,
 } from "./templates";
@@ -23,8 +24,10 @@ export async function generateCli(
   // Create directory structure
   await mkdir(join(dir, "src", "commands"), { recursive: true });
 
-  // Generate all files in parallel
-  await Promise.all([
+  const auth = schema.auth;
+  const isOAuth = auth.type === "oauth";
+
+  const writes: Promise<void>[] = [
     // package.json
     writeFile(join(dir, "package.json"), renderPackageJson(schema)),
     // tsconfig.json
@@ -49,17 +52,38 @@ export async function generateCli(
         {
           alias: schema.alias,
           baseUrl: schema.baseUrl,
-          auth: {
-            type: schema.auth.type,
-            headerName: schema.auth.headerName,
-          },
+          auth:
+            auth.type === "oauth"
+              ? {
+                  type: "oauth",
+                  headerName: auth.headerName,
+                  headerPrefix: auth.headerPrefix,
+                  loginPath: auth.loginPath,
+                  tokenParam: auth.tokenParam,
+                  ...(auth.loginUrl ? { loginUrl: auth.loginUrl } : {}),
+                }
+              : {
+                  type: auth.type,
+                  headerName: auth.headerName,
+                },
           generatedAt: new Date().toISOString(),
         },
         null,
         2,
       ),
     ),
-  ]);
+  ];
+
+  if (isOAuth) {
+    writes.push(
+      writeFile(
+        join(dir, "src", "commands", "_login.ts"),
+        renderLoginCommand(schema),
+      ),
+    );
+  }
+
+  await Promise.all(writes);
 
   return dir;
 }
