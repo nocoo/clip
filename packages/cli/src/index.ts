@@ -14,9 +14,17 @@ program
 program
   .command("generate [path]")
   .description("Generate CLI from clip.yaml schema")
-  .action(async (path?: string) => {
-    await generate(path ?? "clip.yaml");
-  });
+  .option("--schema <path>", "Path to clip.yaml schema file")
+  .option("--output <dir>", "Output directory for generated CLI")
+  .action(
+    async (
+      path: string | undefined,
+      opts: { schema?: string; output?: string },
+    ) => {
+      const schemaPath = opts.schema ?? path ?? "clip.yaml";
+      await generate(schemaPath, opts.output);
+    },
+  );
 
 // clip install [path]
 program
