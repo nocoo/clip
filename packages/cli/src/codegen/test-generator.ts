@@ -83,9 +83,11 @@ function buildAuthHeaderExpression(schema: ClipSchema): {
 }
 
 function renderTestsReadme(schema: ClipSchema): string {
+  /* v8 ignore start -- defensive guard; caller already checks auth.type */
   if (schema.auth.type !== "oauth") {
     throw new Error("renderTestsReadme requires auth.type === oauth");
   }
+  /* v8 ignore stop */
   const auth = schema.auth;
   return `# Generated tests
 
@@ -323,8 +325,10 @@ ${itemValidation}
       return `    expect(typeof ${varName}).toBe("object");
 ${props}`;
     }
+    /* v8 ignore start -- defensive default for unknown schema.type */
     default:
       return `    expect(typeof ${varName}).toBe("${schema.type}");`;
+    /* v8 ignore stop */
   }
 }
 
@@ -339,8 +343,10 @@ function sampleValue(paramName: string, type: string): string {
       return "42";
     case "boolean":
       return "true";
+    /* v8 ignore start -- defensive default for unknown param type */
     default:
       return `"test-${paramName}"`;
+    /* v8 ignore stop */
   }
 }
 

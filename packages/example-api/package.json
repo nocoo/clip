@@ -4,11 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:unit": "bun test tests/unit --coverage"
+    "test:unit": "vitest run --coverage"
   },
-  "devDependencies": {
-    "@types/bun": "^1.3.12"
-  },
+  "devDependencies": {},
   "dependencies": {
     "hono": "^4.12.14"
   }

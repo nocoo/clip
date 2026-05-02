@@ -1,4 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+const mock = vi.fn;
+
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -60,6 +63,51 @@ describe("authSet", () => {
     console.error = originalError;
   });
 
+  it("reads headerName from clip.yaml when --header is omitted", async () => {
+    const { authSet } = await import("../../../src/commands/auth");
+
+    const {
+      writeFile,
+      mkdtemp: _mkdtemp,
+      rm: _rm,
+    } = await import("node:fs/promises");
+    const yamlDir = await _mkdtemp(join(tmpdir(), "clip-header-yaml-"));
+    await writeFile(
+      join(yamlDir, "clip.yaml"),
+      [
+        'name: "Hdr API"',
+        "alias: hdr-api",
+        'version: "1.0.0"',
+        'baseUrl: "https://example.com"',
+        "auth:",
+        "  type: header",
+        '  headerName: "X-Custom-Key"',
+        "endpoints:",
+        "  - name: ping",
+        "    method: GET",
+        "    path: /ping",
+        '    description: "Ping"',
+      ].join("\n"),
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(yamlDir);
+
+    try {
+      await authSet("hdr-from-yaml", { key: "value-from-yaml" });
+    } finally {
+      process.chdir(originalCwd);
+      await _rm(yamlDir, { recursive: true, force: true });
+    }
+
+    const creds = await storage.loadCredentials("hdr-from-yaml");
+    expect(creds).toEqual({
+      type: "header",
+      headerName: "X-Custom-Key",
+      headerValue: "value-from-yaml",
+    });
+  });
+
   it("saves credentials with custom header name", async () => {
     const { authSet } = await import("../../../src/commands/auth");
 
@@ -101,6 +149,55 @@ describe("authShow", () => {
     // Value should be masked, not plain text
     expect(output).toContain("****");
     expect(output).not.toContain("sk-abcdef123456");
+  });
+
+  it("displays OAuth credentials without email or expiry", async () => {
+    const { authShow } = await import("../../../src/commands/auth");
+
+    await storage.saveCredentials("oauth-bare", {
+      type: "oauth",
+      token: "bare-token-1234567890",
+    });
+
+    const logMock = mock();
+    const originalLog = console.log;
+    console.log = logMock;
+
+    await authShow("oauth-bare");
+
+    console.log = originalLog;
+
+    const output = logMock.mock.calls.map((c: string[]) => c[0]).join("\n");
+    expect(output).toContain("oauth");
+    expect(output).not.toContain("Email:");
+    expect(output).not.toContain("Expires:");
+    expect(output).toContain("****");
+  });
+
+  it("displays OAuth credentials with email and expiry", async () => {
+    const { authShow } = await import("../../../src/commands/auth");
+
+    await storage.saveCredentials("oauth-show", {
+      type: "oauth",
+      token: "oauth-token-1234567890",
+      email: "user@example.com",
+      expiresAt: "2099-01-01T00:00:00Z",
+    });
+
+    const logMock = mock();
+    const originalLog = console.log;
+    console.log = logMock;
+
+    await authShow("oauth-show");
+
+    console.log = originalLog;
+
+    const output = logMock.mock.calls.map((c: string[]) => c[0]).join("\n");
+    expect(output).toContain("oauth");
+    expect(output).toContain("user@example.com");
+    expect(output).toContain("2099-01-01");
+    expect(output).toContain("****");
+    expect(output).not.toContain("oauth-token-1234567890");
   });
 
   it("exits with error for nonexistent alias", async () => {
@@ -257,6 +354,36 @@ describe("authLogin", () => {
     console.error = originalError;
   });
 
+  it("uses fallback message when login fails without an error string", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const exitMock = mock(() => {
+      throw new Error("process.exit called");
+    });
+    const originalExit = process.exit;
+    process.exit = exitMock as never;
+
+    const errorMock = mock();
+    const originalError = console.error;
+    console.error = errorMock;
+
+    try {
+      await authLogin("login-no-msg", {
+        parseSchema: async () => oauthSchema,
+        // biome-ignore lint/suspicious/noExplicitAny: test mock typing
+        performLogin: mock(async () => ({ success: false })) as any,
+        openBrowser: mock(async () => {}),
+      });
+    } catch {
+      // expected
+    }
+
+    expect(errorMock.mock.calls[0][0]).toContain("no token received");
+
+    process.exit = originalExit;
+    console.error = originalError;
+  });
+
   it("rejects header-auth schemas", async () => {
     const { authLogin } = await import("../../../src/commands/auth");
 
@@ -324,5 +451,129 @@ describe("authLogin", () => {
       apiUrl: "https://saas.example.org",
       loginPath: "/custom/login",
     });
+  });
+
+  it("uses loginPath when loginUrl is omitted", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const captured: { apiUrl?: string; loginPath?: string } = {};
+    const performLogin = mock(
+      async (deps: {
+        apiUrl: string;
+        loginPath: string;
+        onSaveToken: (t: string) => void;
+      }) => {
+        captured.apiUrl = deps.apiUrl;
+        captured.loginPath = deps.loginPath;
+        deps.onSaveToken("t");
+        return { success: true };
+      },
+    );
+
+    await authLogin("plain-login", {
+      parseSchema: async () => oauthSchema,
+      // biome-ignore lint/suspicious/noExplicitAny: test mock typing
+      performLogin: performLogin as any,
+      openBrowser: mock(async () => {}),
+    });
+
+    expect(captured).toEqual({
+      apiUrl: "https://example.com",
+      loginPath: "/api/auth/cli",
+    });
+  });
+
+  it("exits when clip.yaml cannot be parsed", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const exitMock = mock(() => {
+      throw new Error("process.exit called");
+    });
+    const originalExit = process.exit;
+    process.exit = exitMock as never;
+
+    const errorMock = mock();
+    const originalError = console.error;
+    console.error = errorMock;
+
+    try {
+      await authLogin("missing-yaml", {
+        parseSchema: async () => {
+          throw new Error("ENOENT: clip.yaml not found");
+        },
+        performLogin: mock(async () => ({ success: true })) as never,
+        openBrowser: mock(async () => {}),
+      });
+    } catch {
+      // expected — exit mock throws
+    }
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls[0][0]).toContain("clip.yaml");
+
+    process.exit = originalExit;
+    console.error = originalError;
+  });
+});
+
+describe("authSet — OAuth schema rejection", () => {
+  it("rejects when clip.yaml declares OAuth auth and no --header is given", async () => {
+    const { authSet } = await import("../../../src/commands/auth");
+
+    // Write an OAuth clip.yaml in cwd so authSet's parser finds it
+    const {
+      writeFile,
+      mkdtemp: _mkdtemp,
+      rm: _rm,
+    } = await import("node:fs/promises");
+    const oauthDir = await _mkdtemp(join(tmpdir(), "clip-oauth-yaml-"));
+    const yamlPath = join(oauthDir, "clip.yaml");
+    await writeFile(
+      yamlPath,
+      [
+        'name: "OAuth API"',
+        "alias: oauth-api",
+        'version: "1.0.0"',
+        'baseUrl: "https://example.com"',
+        "auth:",
+        "  type: oauth",
+        "  tokenParam: api_key",
+        '  loginPath: "/api/auth/cli"',
+        '  headerName: "Authorization"',
+        '  headerPrefix: "Bearer"',
+        "endpoints:",
+        "  - name: ping",
+        "    method: GET",
+        "    path: /ping",
+        '    description: "Ping"',
+      ].join("\n"),
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(oauthDir);
+
+    const exitMock = mock(() => {
+      throw new Error("process.exit called");
+    });
+    const originalExit = process.exit;
+    process.exit = exitMock as never;
+
+    const errorMock = mock();
+    const originalError = console.error;
+    console.error = errorMock;
+
+    try {
+      await authSet("rejects-oauth", { key: "irrelevant" });
+    } catch {
+      // expected — exit mock throws
+    } finally {
+      process.chdir(originalCwd);
+      process.exit = originalExit;
+      console.error = originalError;
+      await _rm(oauthDir, { recursive: true, force: true });
+    }
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls[0][0]).toContain("OAuth");
   });
 });

@@ -23,10 +23,12 @@ export async function authLogin(
     timeoutMs?: number;
   } = {},
 ): Promise<void> {
+  /* v8 ignore start -- production fallbacks; tests inject all deps */
   const parseSchema =
     deps.parseSchema ??
     (async (p: string) =>
       (await import("../schema/parser")).parseClipSchema(p));
+  /* v8 ignore stop */
 
   let schema: ClipSchema;
   try {
@@ -57,8 +59,10 @@ export async function authLogin(
     : oauth.loginPath;
 
   const cliBase = await import("@nocoo/cli-base");
+  /* v8 ignore start -- production fallbacks; tests inject mocks */
   const performLogin = deps.performLogin ?? cliBase.performLogin;
   const openBrowser = deps.openBrowser ?? cliBase.openBrowser;
+  /* v8 ignore stop */
 
   console.log(`🔐 Opening browser to log in to "${alias}"...`);
 
@@ -72,6 +76,7 @@ export async function authLogin(
     onSaveToken: (token: string) => {
       savedToken = token;
     },
+    /* v8 ignore next -- production logger; mocks supply their own */
     log: (msg: string) => console.log(msg),
   });
 
@@ -126,8 +131,8 @@ export async function authSet(
 
   let headerValue = options.key;
 
+  /* v8 ignore start -- interactive secret prompt, not unit-testable */
   if (!headerValue) {
-    // Interactive prompt
     headerValue = await promptSecret(
       `Enter API key for "${alias}" (${headerName}): `,
     );
@@ -137,6 +142,7 @@ export async function authSet(
     console.error("❌ No API key provided");
     process.exit(1);
   }
+  /* v8 ignore stop */
 
   await saveCredentials(alias, { type: "header", headerName, headerValue });
   console.log(`✅ Credentials saved for "${alias}"`);
@@ -175,6 +181,7 @@ export async function authRemove(
   options: { force?: boolean },
 ): Promise<void> {
   if (!options.force) {
+    /* v8 ignore start */
     const answer = await promptInput(
       `Remove credentials for "${alias}"? (y/N) `,
     );
@@ -182,6 +189,7 @@ export async function authRemove(
       console.log("Cancelled.");
       return;
     }
+    /* v8 ignore stop */
   }
 
   const removed = await removeCredentials(alias);
@@ -195,6 +203,7 @@ export async function authRemove(
 /**
  * Prompt for secret input from stdin (hides typed characters).
  */
+/* v8 ignore start -- interactive stdin/TTY helpers, not unit-testable */
 async function promptSecret(prompt: string): Promise<string> {
   const { stdin, stdout } = process;
   stdout.write(prompt);
@@ -273,3 +282,4 @@ async function readLine(stream: NodeJS.ReadStream): Promise<string> {
     });
   });
 }
+/* v8 ignore stop */

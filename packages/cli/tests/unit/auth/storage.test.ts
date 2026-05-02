@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // We'll dynamically import the storage module after setting CLIP_HOME
 let storage: typeof import("../../../src/auth/storage");
@@ -113,6 +113,19 @@ describe("loadCredentials", () => {
       headerName: "X-API-Key",
       headerValue: "sk-load-test",
     });
+  });
+
+  it("returns null for malformed credentials file", async () => {
+    const credPath = await storage.getCredentialsPath("malformed-creds");
+    await mkdtemp(join(tempDir, "ignored-")); // ensure tempDir exists
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const { dirname } = await import("node:path");
+    await mkdir(dirname(credPath), { recursive: true });
+    // Write a valid JSON object with no recognizable type/header fields
+    await writeFile(credPath, JSON.stringify({ unrelated: "value" }), "utf-8");
+
+    const creds = await storage.loadCredentials("malformed-creds");
+    expect(creds).toBeNull();
   });
 
   it("returns null for nonexistent alias", async () => {

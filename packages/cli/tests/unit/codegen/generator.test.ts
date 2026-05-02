@@ -1,9 +1,31 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateCli } from "../../../src/codegen/generator";
 import type { ClipSchema } from "../../../src/schema/types";
+
+async function listAllFiles(dir: string, base = dir): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  const out: string[] = [];
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...(await listAllFiles(full, base)));
+    } else {
+      out.push(relative(base, full).split(sep).join("/"));
+    }
+  }
+  return out;
+}
+
+async function listCommandsDir(outputDir: string): Promise<string[]> {
+  const dir = join(outputDir, "src", "commands");
+  const entries = await readdir(dir).catch(() => []);
+  return entries
+    .filter((n) => n.endsWith(".ts"))
+    .map((n) => `src/commands/${n}`);
+}
 
 let tempDir: string;
 
@@ -122,12 +144,7 @@ describe("generateCli", () => {
     const outputDir = join(tempDir, "structure-test");
     await generateCli(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("**/*");
-    const files: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      files.push(file);
-    }
+    const files = await listAllFiles(outputDir);
 
     expect(files).toContain("src/index.ts");
     expect(files).toContain("src/client.ts");
@@ -141,12 +158,7 @@ describe("generateCli", () => {
     const outputDir = join(tempDir, "commands-test");
     await generateCli(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("src/commands/*.ts");
-    const commandFiles: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      commandFiles.push(file);
-    }
+    const commandFiles = await listCommandsDir(outputDir);
 
     expect(commandFiles).toContain("src/commands/list.ts");
     expect(commandFiles).toContain("src/commands/create.ts");
@@ -515,12 +527,7 @@ describe("generateCli — OAuth schemas", () => {
     const outputDir = join(tempDir, "header-no-login");
     await generateCli(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("src/commands/*.ts");
-    const files: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      files.push(file);
-    }
+    const files = await listCommandsDir(outputDir);
     expect(files).not.toContain("src/commands/_login.ts");
   });
 });

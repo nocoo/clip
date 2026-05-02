@@ -7,7 +7,7 @@
   "scripts": {
     "lint": "biome check . --error-on-warnings",
     "typecheck": "tsc --noEmit",
-    "test:unit": "bun test --coverage",
+    "test:unit": "vitest run --coverage",
     "test:integration": "echo 'No integration tests yet'",
     "lint:secrets": "gitleaks detect --source . --verbose",
     "lint:deps": "osv-scanner --lockfile bun.lock",
@@ -16,6 +16,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
     "@types/bun": "^1.3.12",
-    "typescript": "^6.0.2"
+    "@vitest/coverage-v8": "^4.1.5",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.5"
   }
 }

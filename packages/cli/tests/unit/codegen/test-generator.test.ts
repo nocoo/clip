@@ -1,9 +1,17 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateTests } from "../../../src/codegen/test-generator";
 import type { ClipSchema } from "../../../src/schema/types";
+
+async function listTestsDir(
+  outputDir: string,
+  filter: (name: string) => boolean = () => true,
+): Promise<string[]> {
+  const entries = await readdir(join(outputDir, "tests")).catch(() => []);
+  return entries.filter(filter).map((name) => `tests/${name}`);
+}
 
 let tempDir: string;
 
@@ -122,12 +130,9 @@ describe("generateTests", () => {
     const outputDir = join(tempDir, "independent-tests");
     await generateTests(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("tests/*.test.ts");
-    const testFiles: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      testFiles.push(file);
-    }
+    const testFiles = await listTestsDir(outputDir, (n) =>
+      n.endsWith(".test.ts"),
+    );
 
     // list and create are independent; get/update/delete are CRUD-dependent
     expect(testFiles).toContain("tests/list.test.ts");
@@ -138,12 +143,9 @@ describe("generateTests", () => {
     const outputDir = join(tempDir, "crud-tests");
     await generateTests(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("tests/*.test.ts");
-    const testFiles: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      testFiles.push(file);
-    }
+    const testFiles = await listTestsDir(outputDir, (n) =>
+      n.endsWith(".test.ts"),
+    );
 
     expect(testFiles).toContain("tests/crud-sequence.test.ts");
   });
@@ -152,12 +154,9 @@ describe("generateTests", () => {
     const outputDir = join(tempDir, "no-individual-crud");
     await generateTests(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("tests/*.test.ts");
-    const testFiles: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      testFiles.push(file);
-    }
+    const testFiles = await listTestsDir(outputDir, (n) =>
+      n.endsWith(".test.ts"),
+    );
 
     // get, update, delete should NOT have individual test files
     expect(testFiles).not.toContain("tests/get.test.ts");
@@ -564,12 +563,9 @@ describe("generateTests", () => {
     const outputDir = join(tempDir, "no-crud-test");
     await generateTests(noCrudSchema, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("tests/*.test.ts");
-    const testFiles: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      testFiles.push(file);
-    }
+    const testFiles = await listTestsDir(outputDir, (n) =>
+      n.endsWith(".test.ts"),
+    );
 
     expect(testFiles).toContain("tests/list.test.ts");
     expect(testFiles).not.toContain("tests/crud-sequence.test.ts");
@@ -667,12 +663,7 @@ describe("generateTests — OAuth schemas", () => {
     const outputDir = join(tempDir, "header-no-readme");
     await generateTests(SAMPLE_SCHEMA, outputDir);
 
-    const { Glob } = await import("bun");
-    const glob = new Glob("tests/*");
-    const files: string[] = [];
-    for await (const file of glob.scan({ cwd: outputDir })) {
-      files.push(file);
-    }
+    const files = await listTestsDir(outputDir);
 
     expect(files).not.toContain("tests/README.md");
   });

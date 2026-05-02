@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let tempDir: string;
 
@@ -119,11 +119,6 @@ describe("generate command", () => {
   it("exits with error for invalid schema path", async () => {
     const { generate } = await import("../../../src/commands/generate");
 
-    try {
-      await generate("/nonexistent/clip.yaml");
-      expect.unreachable("Should have thrown");
-    } catch (error) {
-      expect(error).toBeDefined();
-    }
+    await expect(generate("/nonexistent/clip.yaml")).rejects.toBeDefined();
   });
 });

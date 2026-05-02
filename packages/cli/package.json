@@ -7,7 +7,7 @@
     "clip": "src/index.ts"
   },
   "scripts": {
-    "test:unit": "bun test tests/unit --coverage"
+    "test:unit": "vitest run --coverage"
   },
   "devDependencies": {},
   "dependencies": {

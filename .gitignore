@@ -4,3 +4,4 @@ dist/
 examples/*/output/
 *.tsbuildinfo
 .astro/
+coverage/

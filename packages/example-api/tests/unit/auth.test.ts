@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "bun:test";
 import { Hono } from "hono";
+import { beforeEach, describe, expect, it } from "vitest";
 import { authMiddleware } from "../../src/middleware/auth";
 
 function createTestApp() {

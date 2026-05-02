@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "bun:test";
 import { Hono } from "hono";
+import { beforeEach, describe, expect, it } from "vitest";
 import { authMiddleware } from "../../src/middleware/auth";
 import { todosRouter } from "../../src/routes/todos";
 import { todoStore } from "../../src/store";
@@ -122,6 +122,19 @@ describe("Todo Routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.title).toBe("Updated");
+      expect(body.completed).toBe(true);
+    });
+
+    it("updates only completed when title is omitted", async () => {
+      const created = todoStore.create("Keep title");
+      const res = await app.request(`/todos/${created.id}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: true }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.title).toBe("Keep title");
       expect(body.completed).toBe(true);
     });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import type { ClipSchema } from "../../../src/schema/types";
 import {

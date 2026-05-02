@@ -282,9 +282,11 @@ export function renderPackageJson(schema: ClipSchema): string {
  * the result as OAuthCredentials under `~/.clip/<alias>/credentials.json`.
  */
 export function renderLoginCommand(schema: ClipSchema): string {
+  /* v8 ignore start -- defensive guard; caller already checks auth.type */
   if (schema.auth.type !== "oauth") {
     throw new Error("renderLoginCommand requires auth.type === oauth");
   }
+  /* v8 ignore stop */
   const a = schema.auth;
   const apiUrl = a.loginUrl ? new URL(a.loginUrl).origin : schema.baseUrl;
   const loginPath = a.loginUrl
