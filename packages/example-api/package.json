@@ -8,6 +8,6 @@
   },
   "devDependencies": {},
   "dependencies": {
-    "hono": "^4.12.14"
+    "hono": "^4.12.18"
   }
 }
