@@ -28,13 +28,17 @@ The adapter converts an OpenAPI spec into the in-memory `ClipSchema` AST that th
 
 ### Default emit policy
 
-The adapter writes a `clip.yaml` to the output directory **by default**. This avoids three follow-on problems:
+The adapter writes a `clip.yaml` to the **current working directory** by default — not to the output directory. The reason is `clip auth set <alias>` (`packages/cli/src/commands/auth.ts:121`): it reads `clip.yaml` from the process cwd, not from `<output>/clip.yaml` or any per-alias path. If we emitted only to `<output>/`, users would still hit the "no clip.yaml found, --header required" path unless they happened to `cd` into `<output>/` first.
 
-1. `clip auth set <alias>` reads the local `clip.yaml` to infer the auth shape (header name, cf-access headers). Without an emitted yaml, users would be forced to pass `--header` / `--client-id` / `--client-secret` for every auth command.
+Three reasons to emit:
+
+1. `clip auth set <alias>` reads the cwd `clip.yaml` to infer the auth shape (header name, cf-access headers). Without it, every auth command requires explicit flags.
 2. The emitted yaml is the artifact users hand-edit when adapter mapping is lossy (Section 5).
 3. It gives version control a checked-in record of what the OpenAPI spec resolved to.
 
-`--no-emit-yaml` is provided as an escape hatch for ad-hoc one-shot generation. Users opting out accept that `clip auth set` will require explicit `--header` flags — this trade-off is documented in `--help` output.
+`--emit-yaml-path <path>` overrides the default `./clip.yaml` location for users who already keep one in cwd and don't want it overwritten. `--no-emit-yaml` is the full escape hatch — users opting out accept that `clip auth set` will require explicit `--header` / `--client-id` / `--client-secret` flags. The trade-off is printed in `--help`.
+
+A future alternative is to teach `clip auth set` to look up `<CLIP_HOME>/<alias>/metadata.json` (written at generate time) for auth-shape resolution. That decouples auth commands from cwd entirely. **Out of scope for v1** — tracked in §8 — but it is the long-term answer.
 
 ## 2. CLI Surface
 
@@ -45,8 +49,10 @@ The adapter writes a `clip.yaml` to the output directory **by default**. This av
 | `--from <path>` | string | No | Path to an OpenAPI 3.x document (`.json` or `.yaml`). When set, `clip.yaml` and the positional `[path]` / `--schema` are not read for schema input. |
 | `--alias <alias>` | string | Yes (with `--from`) | Required whenever `--from` is used. Must match `/^[a-z][a-z0-9-]*$/`. OpenAPI has no notion of an alias, so the adapter cannot derive one. |
 | `--base-url <url>` | string | No | Overrides `servers[0].url` from the spec. Required when the spec has no `servers` entry. |
-| `--no-emit-yaml` | boolean | No | Skip writing `clip.yaml` (default emits). |
-| `--emit-yaml-path <path>` | string | No | Override the output path for the emitted yaml (defaults to `<output>/clip.yaml`). |
+| `--no-emit-yaml` | boolean | No | Skip writing `clip.yaml` (default emits to cwd). |
+| `--emit-yaml-path <path>` | string | No | Override the output path for the emitted yaml (defaults to `./clip.yaml` in the current working directory, **not** the output directory — see §1.3). |
+| `--auth <variant>` | enum | Conditional | Force a specific auth shape when the spec has no `securitySchemes` or none map cleanly. Values: `header`, `cf-access`. Combine with `--auth-header` / `--auth-cf-access-client-id-header` / `--auth-cf-access-client-secret-header` to customize. See §4.4 "Auth override". |
+| `--auth-header <name>` | string | No | Header name when `--auth header` is used. Defaults to `Authorization`. |
 
 ### Precedence and conflicts
 
@@ -220,12 +226,14 @@ The adapter scans `components.securitySchemes` in the order they appear and pick
 |----------------|-------------------|
 | `type: apiKey, in: header, name: X` | `{ type: "header", headerName: "X" }` |
 | `type: http, scheme: bearer` | `{ type: "header", headerName: "Authorization" }` **plus** an emitted note that the user must store the credential value as `Bearer <token>` (see below) |
-| `type: oauth2`, flow `authorizationCode` | `{ type: "oauth", ... }` using clip's existing oauth shape (default `headerPrefix: "Bearer"`) |
+| `type: oauth2` | **Skipped in v1** — see below |
 | `type: apiKey, in: query` | Skipped (clip has no query-auth surface today) |
 | `type: apiKey, in: cookie` | Skipped |
 | `type: http, scheme: basic` | Skipped |
 | `type: openIdConnect` | Skipped |
 | `type: mutualTLS` | Skipped |
+
+**Why oauth2 is skipped in v1**: Clip's `oauth` auth shape (`packages/cli/src/schema/validator.ts:85-92`) is not RFC 6749 OAuth 2.0. It is a custom browser-callback flow keyed on `loginPath` + `tokenParam` against the user's own backend. OpenAPI's `oauth2` flows (`authorizationCode`, `clientCredentials`, etc.) carry `authorizationUrl` / `tokenUrl` / `scopes` and assume a standard token endpoint exchange. The two protocols do not line up — auto-mapping `authorizationCode` would fabricate a `loginPath` that doesn't exist on the target API and produce a CLI whose `clip auth login` silently fails. Until either Clip's `oauth` shape grows real OAuth 2.0 support or a vendor-extension convention is defined, oauth2 schemes are treated like other unsupported variants (skipped with a warning, possibly triggering the hard-fail path).
 
 **Bearer caveat**: Clip's runtime header auth (`packages/cli/src/codegen/templates.ts:193-198`) writes the stored credential value verbatim into the header. It does **not** prefix `Bearer ` — that prefix capability exists only on the `oauth` auth shape (`headerPrefix`, `validator.ts:91`). Three options were considered for v1:
 
@@ -233,11 +241,18 @@ The adapter scans `components.securitySchemes` in the order they appear and pick
 - (B) Add an optional `headerPrefix` field to `header` auth and prefix at runtime. Cleaner for users but expands the auth surface and requires a migration of `header` credentials. Tracked as a follow-up.
 - (C) Introduce a new `bearer` auth variant. Symmetric with (B) in cost; rejected because (B) generalizes better.
 
-**Hard failure**: if the spec has at least one `securitySchemes` entry but **none** map cleanly, the adapter raises a hard error: `error: no supported security scheme in <path>; supported: apiKey-header, http-bearer, oauth2-authorizationCode`. We do **not** fall back to a placeholder — silently producing a CLI with broken auth is worse than failing fast.
+**Auth override**: when the spec has zero `securitySchemes`, or none of the present schemes map cleanly, the adapter consults the `--auth` family of flags before deciding whether to fail:
 
-If the spec has **zero** `securitySchemes`, that is itself an error: `auth` is required by `ClipSchema`. The user must either fix the spec or add auth manually after generation.
+- `--auth header [--auth-header <name>]` → emits `{ type: "header", headerName: <name | "Authorization"> }`. Use this for any custom or unsupported auth.
+- `--auth cf-access` → emits `{ type: "cf-access", clientIdHeader: ..., clientSecretHeader: ... }` using clip's defaults. The user runs `clip auth set --client-id ... --client-secret ...` after generation.
+- (No `--auth` flag) and no mappable scheme → hard error: `error: spec has no supported security scheme; pass --auth header [--auth-header <name>] or --auth cf-access to override`.
 
-cf-access (the discriminated-union variant added recently) is intentionally **not** auto-detected from OpenAPI. Users add it post-generation with `clip auth set --client-id ... --client-secret ...`. Documented in the emitted CLI's `--help`.
+This resolves two earlier inconsistencies:
+
+1. **The cf-access workflow is now reachable.** Previously the doc said cf-access is not auto-detected and users add it post-generation, but the hard-fail path aborted before generation completed. With `--auth cf-access`, generation succeeds and the post-generation `clip auth set` flow works as documented.
+2. **No silent placeholder.** The default behavior is still hard-fail when nothing maps; the override is explicit and visible in the user's command line.
+
+The override flags also work when the spec **has** a mappable scheme — `--auth` always wins. This lets users override a spec's stated auth (e.g., the public spec says `apiKey` but the deployment is gated behind cf-access).
 
 ### 4.5 Type mapping for **request parameters** (path / query / body)
 
@@ -291,10 +306,12 @@ Strategy:
 1. Run each parameter name through `slugify` (4.3 algorithm).
 2. If the slug differs from the original, the adapter records a `sourceName → slug` mapping in an internal table.
 3. The slug is what lands in `ClipSchema`. The source name is preserved by emitting `description: "Source: <originalName>"` so users have an audit trail in the emitted yaml.
-4. **Wire-format preservation is a known v1 gap**: codegen currently uses the param key as the wire name (query string key, JSON body key, path placeholder). After slugification, the wire name diverges from what the API expects. Two fixes are possible:
-   - (a) Extend `ParamDef` with an optional `sourceName` field that codegen prefers for the wire when present. Small change to `templates.ts`.
+4. **Wire-format preservation is critical for both codegen targets**: codegen currently uses the param key as the wire name in two generators — `packages/cli/src/codegen/templates.ts:215, 218, 222, 229, 235` (the runtime CLI commands) and `packages/cli/src/codegen/test-generator.ts:127, 361` (the live-API test suite). After slugification, the wire name diverges from what the API expects on **both** paths. If only `templates.ts` is updated, the CLI works but generated tests use the slug and fail against the real API.
+
+   Two fixes are possible:
+   - (a) Extend `ParamDef` with an optional `sourceName` field that **both** codegen targets prefer for the wire when present. Small, parallel change to `templates.ts` and `test-generator.ts`.
    - (b) Reject specs with non-identifier parameter names and require manual yaml editing.
-   - **Chosen for v1: (a).** Emit a warning and add `sourceName` to the emitted yaml; if `sourceName` is absent from existing schemas the codegen falls back to the key as today (no behavior change for hand-written yaml).
+   - **Chosen for v1: (a).** Emit a warning and add `sourceName` to the emitted yaml; if `sourceName` is absent from existing schemas the codegen falls back to the key as today (no behavior change for hand-written yaml). Both `templates.ts` and `test-generator.ts` must be updated together; the integration test (Section 7) compares generated test output against expected wire names.
 5. If slugification produces a collision within the same parameter group (e.g. two query params `user-id` and `user_id` both slug to `user-id`), raise a hard error referencing both source names.
 
 This is a `ParamDef` extension; it is the only schema change introduced by this feature and is fully backward-compatible.
@@ -325,7 +342,9 @@ Warnings are aggregated and printed once at the end of `clip generate` so the us
 | `packages/cli/src/schema/openapi-warnings.ts` | Create | `AdapterWarning` type + collector helper |
 | `packages/cli/src/schema/openapi-slugify.ts` | Create | Shared slugify + collision-resolution utility (used for endpoint names + param names) |
 | `packages/cli/src/schema/validator.ts` | Modify | Add optional `sourceName?: string` to `ParamDef` Zod + TS shape |
+| `docs/features/01-schema-definition.md` | Modify | Add `sourceName` to the `ParamDef` table; it becomes a first-class schema field |
 | `packages/cli/src/codegen/templates.ts` | Modify | Use `sourceName` for query/body/path wire names when present; identifier still uses key |
+| `packages/cli/src/codegen/test-generator.ts` | Modify | Same `sourceName` preference for the live-API test suite (query string keys + JSON body keys); without this, generated tests fail against APIs whose param names had to be slugified |
 | `packages/cli/src/commands/generate.ts` | Modify | Wire `--from` / `--alias` / `--base-url` / `--no-emit-yaml` / `--emit-yaml-path`; reject conflicts with `[path]` / `--schema` |
 | `packages/cli/src/index.ts` | Modify | Register the new flags on `generate` |
 | `packages/cli/package.json` | Modify | Add `@apidevtools/swagger-parser`, `openapi-types` |
@@ -370,8 +389,11 @@ Warnings are aggregated and printed once at the end of `clip generate` so the us
 - ✅ Merges path-item-level `parameters` with operation-level, with operation-level overriding (Issue #2)
 - ✅ Maps `apiKey` (header) auth
 - ✅ Maps `http bearer` auth to `Authorization` header and emits the `Bearer ` storage hint warning (Issue #3)
-- ✅ Hard-fails when the spec has security schemes but none map (Issue #5)
-- ✅ Hard-fails when the spec has zero security schemes
+- ✅ Hard-fails when the spec has security schemes but none map and no `--auth` override is supplied (Issue #5)
+- ✅ Hard-fails when the spec has zero security schemes and no `--auth` override
+- ✅ `--auth header --auth-header X-Custom` produces `{ type: "header", headerName: "X-Custom" }` regardless of spec content
+- ✅ `--auth cf-access` produces a cf-access auth shape with default headers
+- ✅ Skips `oauth2` schemes with a warning (no auto-mapping in v1)
 - ✅ Maps `enum` and `nullable` parameter constraints
 - ✅ Drops `enum` / `nullable` on response schemas with a warning (Issue #6)
 - ✅ Drops non-JSON content types with a warning
@@ -392,14 +414,20 @@ Warnings are aggregated and printed once at the end of `clip generate` so the us
 - ✅ Missing `--alias` exits with a clear error
 - ✅ `clip generate clip.yaml --from openapi.json` exits with a clear conflict error (Issue #10)
 - ✅ `clip generate --from openapi.json --schema clip.yaml --alias x` exits with a clear conflict error
-- ✅ After generation with bearer auth fixture, `clip auth set <alias>` reads the emitted yaml and prompts for the value with the documented `Bearer ` hint (Issues #3, #4)
+- ✅ After generation with bearer auth fixture, `clip auth set <alias>` reads the emitted cwd `clip.yaml` and prompts for the value with the documented `Bearer ` hint (Issues #3, #4)
+- ✅ `clip generate --from no-security.json --alias x` (spec with no `securitySchemes`) hard-fails when `--auth` is not provided
+- ✅ `clip generate --from no-security.json --alias x --auth cf-access` succeeds; subsequent `clip auth set x --client-id ... --client-secret ...` reads the emitted yaml and stores credentials
+- ✅ `clip generate --from petstore-3.0.json --alias x --auth header --auth-header X-Custom` overrides the spec's apiKey scheme
+- ✅ `clip generate --from oauth2-spec.json --alias x` warns that oauth2 is unsupported in v1; without `--auth`, hard-fails
+- ✅ For a fixture with non-identifier parameter names, the generated **test suite** sends the original wire name (not the slug) — guards against the test-generator regression (Issue #4)
 
 ### Atomic Commit Plan
 
 1. `feat(schema): add openapi-types + swagger-parser dependencies`
 2. `feat(schema): add slugify utility with collision resolution`
 3. `feat(schema): add ParamDef.sourceName for wire-name preservation`
-4. `feat(codegen): use ParamDef.sourceName in generated wire calls when present`
+4. `feat(codegen): use ParamDef.sourceName in generated wire calls when present (templates + test-generator)`
+5. `docs(schema): document ParamDef.sourceName in 01-schema-definition`
 5. `feat(schema): implement openapi-loader with $ref dereferencing`
 6. `feat(schema): implement openapi-normalizer for 3.0 ↔ 3.1 differences`
 7. `feat(schema): implement openapi-adapter mapping (paths, params, response)`
@@ -415,7 +443,9 @@ Warnings are aggregated and printed once at the end of `clip generate` so the us
 
 ## 8. Open Questions
 
-1. **`headerPrefix` on the `header` auth variant** — Option (B) from Section 4.4. If we add it, bearer mapping becomes lossless and the documented `Bearer ` storage hint goes away. The cost is a small migration of existing `header` credentials and a new field on the discriminated union. Tracked as a follow-up; not blocking v1.
-2. **Hono `@hono/zod-openapi` direct integration** — A thin `clip generate --from-hono ./src/app.ts` could import the app and call its `getOpenAPIDocument()`. Out of scope for v1 but a natural follow-up — the adapter is the prerequisite.
-3. **Header / cookie parameters** — Adding `params.header` / `params.cookie` to `ClipSchema` unblocks a large class of real APIs but is a separate feature; tracked outside this doc.
-4. **Response schema enrichment** — Adding optional `nullable` / `enum` / `required` to `ResponseSchema` would close most of Section 4.6's lossiness. Independent feature.
+1. **Decouple `clip auth set` from cwd `clip.yaml`** — Today (`auth.ts:121-141`) it reads the cwd file. A more robust design is to write `<CLIP_HOME>/<alias>/metadata.json` at generate time (storing the auth shape) and have `auth set` consult that by alias. This removes the cwd-emit requirement (§1.3) and the entire `--no-emit-yaml` trade-off. Likely the right next step after v1 ships; tracked as a separate feature.
+2. **`headerPrefix` on the `header` auth variant** — Option (B) from §4.4. If we add it, bearer mapping becomes lossless and the documented `Bearer ` storage hint goes away. The cost is a small migration of existing `header` credentials and a new field on the discriminated union. Tracked as a follow-up; not blocking v1.
+3. **Real OAuth 2.0 support** — Required before oauth2 schemes can auto-map (§4.4). Either extend Clip's `oauth` shape with RFC-6749 fields (`tokenUrl`, `scopes`, grant types) or introduce a new `oauth2` discriminated-union variant. Independent feature.
+4. **Hono `@hono/zod-openapi` direct integration** — A thin `clip generate --from-hono ./src/app.ts` could import the app and call its `getOpenAPIDocument()`. Out of scope for v1 but a natural follow-up — the adapter is the prerequisite.
+5. **Header / cookie parameters** — Adding `params.header` / `params.cookie` to `ClipSchema` unblocks a large class of real APIs but is a separate feature; tracked outside this doc.
+6. **Response schema enrichment** — Adding optional `nullable` / `enum` / `required` to `ResponseSchema` would close most of §4.6's lossiness. Independent feature.
