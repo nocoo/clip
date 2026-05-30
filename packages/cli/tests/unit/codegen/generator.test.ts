@@ -199,8 +199,7 @@ describe("generateCli", () => {
       'process.env.CLIP_BASE_URL || "http://localhost:3000"',
     );
     expect(clientContent).toContain("loadConfig");
-    expect(clientContent).toContain("config.headerName");
-    expect(clientContent).toContain("config.headerValue");
+    expect(clientContent).toContain("...config.headers");
   });
 
   it("generated config.ts reads correct alias path", async () => {
@@ -448,9 +447,8 @@ describe("generateCli — OAuth schemas", () => {
       "utf-8",
     );
 
-    // Returns the uniform { headerName, headerValue } shape
-    expect(configContent).toContain("headerName: string");
-    expect(configContent).toContain("headerValue: string");
+    // Returns the uniform { headers } shape
+    expect(configContent).toContain("headers: Record<string, string>");
     // Branch on the credential type tag
     expect(configContent).toContain('parsed.type === "oauth"');
     // Uses the configured headerName + prefix when constructing the value
@@ -566,5 +564,31 @@ describe("generateCli — cf-access schemas", () => {
     expect(meta.auth.type).toBe("cf-access");
     expect(meta.auth.clientIdHeader).toBe("CF-Access-Client-Id");
     expect(meta.auth.clientSecretHeader).toBe("CF-Access-Client-Secret");
+  });
+
+  it("renders config.ts that emits both CF-Access headers", async () => {
+    const outputDir = join(tempDir, "cfa-config");
+    await generateCli(CF_SCHEMA, outputDir);
+
+    const configContent = await readFile(
+      join(outputDir, "src/config.ts"),
+      "utf-8",
+    );
+
+    expect(configContent).toContain('parsed.type === "cf-access"');
+    expect(configContent).toContain("clientIdHeader");
+    expect(configContent).toContain("clientSecretHeader");
+    expect(configContent).toContain("clientId");
+    expect(configContent).toContain("clientSecret");
+    // Login hint mentions the cf-access flags
+    expect(configContent).toContain("--client-id");
+  });
+
+  it("does not generate _login.ts for cf-access schemas", async () => {
+    const outputDir = join(tempDir, "cfa-no-login");
+    await generateCli(CF_SCHEMA, outputDir);
+
+    const files = await listCommandsDir(outputDir);
+    expect(files).not.toContain("src/commands/_login.ts");
   });
 });

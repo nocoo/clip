@@ -108,9 +108,8 @@ export const client = {
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      ...config.headers,
     };
-
-    headers[config.headerName] = config.headerValue;
 
     const response = await fetch(url.toString(), {
       method: options.method,
@@ -132,30 +131,31 @@ export const client = {
 /**
  * Renders the config module that reads credentials from disk.
  *
- * The generated `loadConfig()` returns a uniform `{ headerName, headerValue }`
- * shape regardless of the underlying credential type:
- * - For "header" credentials, fields are returned verbatim.
- * - For "oauth" credentials, the configured headerName is used and the value
- *   is `headerPrefix + " " + token` (or just the token when prefix is empty).
- * - For legacy files without `type`, the headerName/headerValue fields are
- *   returned as-is for backward compatibility.
+ * The generated `loadConfig()` returns `{ headers: Record<string, string> }`,
+ * a map of HTTP headers to inject into every request. The shape supports:
+ * - "header" credentials → single header
+ * - "oauth" credentials → single Authorization-style header
+ * - "cf-access" credentials → two headers (Client-Id and Client-Secret)
+ * - legacy files without `type` → single header (back-compat)
  */
 export function renderConfig(schema: ClipSchema): string {
   const auth = schema.auth;
   const isOAuth = auth.type === "oauth";
   const oauthHeaderName = isOAuth ? auth.headerName : "Authorization";
   const oauthHeaderPrefix = isOAuth ? auth.headerPrefix : "Bearer";
-  const loginHint = isOAuth
-    ? `${schema.alias} login`
-    : `clip auth set ${schema.alias}`;
+  const loginHint =
+    auth.type === "oauth"
+      ? `${schema.alias} login`
+      : auth.type === "cf-access"
+        ? `clip auth set ${schema.alias} --client-id <id> --client-secret <secret>`
+        : `clip auth set ${schema.alias}`;
 
   return `import { readFile } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
 
 interface ResolvedConfig {
-  headerName: string;
-  headerValue: string;
+  headers: Record<string, string>;
 }
 
 export async function loadConfig(): Promise<ResolvedConfig> {
@@ -174,14 +174,27 @@ export async function loadConfig(): Promise<ResolvedConfig> {
     const token = String(parsed.token ?? "");
     const prefix = "${oauthHeaderPrefix}";
     return {
-      headerName: "${oauthHeaderName}",
-      headerValue: prefix ? prefix + " " + token : token,
+      headers: {
+        "${oauthHeaderName}": prefix ? prefix + " " + token : token,
+      },
+    };
+  }
+  if (parsed.type === "cf-access") {
+    return {
+      headers: {
+        [String(parsed.clientIdHeader ?? "CF-Access-Client-Id")]: String(
+          parsed.clientId ?? "",
+        ),
+        [String(parsed.clientSecretHeader ?? "CF-Access-Client-Secret")]:
+          String(parsed.clientSecret ?? ""),
+      },
     };
   }
   // header credentials (current or legacy)
   return {
-    headerName: String(parsed.headerName ?? ""),
-    headerValue: String(parsed.headerValue ?? ""),
+    headers: {
+      [String(parsed.headerName ?? "")]: String(parsed.headerValue ?? ""),
+    },
   };
 }
 `;
