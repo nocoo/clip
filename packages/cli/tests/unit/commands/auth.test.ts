@@ -200,6 +200,32 @@ describe("authShow", () => {
     expect(output).not.toContain("oauth-token-1234567890");
   });
 
+  it("displays cf-access credentials with both client id and secret masked", async () => {
+    const { authShow } = await import("../../../src/commands/auth");
+
+    await storage.saveCredentials("cfa-show", {
+      type: "cf-access",
+      clientId: "abcdef1234567890.access",
+      clientSecret: "supersecretvalue1234",
+      clientIdHeader: "CF-Access-Client-Id",
+      clientSecretHeader: "CF-Access-Client-Secret",
+    });
+
+    const logMock = mock();
+    const originalLog = console.log;
+    console.log = logMock;
+
+    await authShow("cfa-show");
+
+    console.log = originalLog;
+
+    const output = logMock.mock.calls.map((c: string[]) => c[0]).join("\n");
+    expect(output).toContain("cf-access");
+    expect(output).toContain("CF-Access-Client-Id");
+    expect(output).toContain("CF-Access-Client-Secret");
+    expect(output).toContain("****");
+    expect(output).not.toContain("supersecretvalue1234");
+  });
   it("exits with error for nonexistent alias", async () => {
     const { authShow } = await import("../../../src/commands/auth");
 

@@ -15,7 +15,18 @@ export interface OAuthCredentials {
   expiresAt?: string;
 }
 
-export type Credentials = HeaderCredentials | OAuthCredentials;
+export interface CFAccessCredentials {
+  type: "cf-access";
+  clientId: string;
+  clientSecret: string;
+  clientIdHeader: string;
+  clientSecretHeader: string;
+}
+
+export type Credentials =
+  | HeaderCredentials
+  | OAuthCredentials
+  | CFAccessCredentials;
 
 export function getClipHome(): string {
   return process.env.CLIP_HOME ?? join(homedir(), ".clip");
@@ -54,6 +65,9 @@ export async function loadCredentials(
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (parsed.type === "oauth") {
       return parsed as unknown as OAuthCredentials;
+    }
+    if (parsed.type === "cf-access") {
+      return parsed as unknown as CFAccessCredentials;
     }
     if (parsed.type === "header") {
       return parsed as unknown as HeaderCredentials;

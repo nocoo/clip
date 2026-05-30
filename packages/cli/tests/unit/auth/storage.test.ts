@@ -241,3 +241,24 @@ describe("OAuth credentials", () => {
     });
   });
 });
+
+describe("CFAccess credentials", () => {
+  it("saves and loads cf-access credentials", async () => {
+    await storage.saveCredentials("cfa-roundtrip", {
+      type: "cf-access",
+      clientId: "abc.access",
+      clientSecret: "topsecret",
+      clientIdHeader: "CF-Access-Client-Id",
+      clientSecretHeader: "CF-Access-Client-Secret",
+    });
+
+    const creds = await storage.loadCredentials("cfa-roundtrip");
+    expect(creds).toEqual({
+      type: "cf-access",
+      clientId: "abc.access",
+      clientSecret: "topsecret",
+      clientIdHeader: "CF-Access-Client-Id",
+      clientSecretHeader: "CF-Access-Client-Secret",
+    });
+  });
+});

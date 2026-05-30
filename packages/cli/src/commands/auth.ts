@@ -171,6 +171,12 @@ export async function authShow(alias: string): Promise<void> {
     if (creds.email) console.log(`Email:  ${creds.email}`);
     if (creds.expiresAt) console.log(`Expires: ${creds.expiresAt}`);
     console.log(`Token:  ${maskValue(creds.token)}`);
+  } else if (creds.type === "cf-access") {
+    console.log("Type:   cf-access");
+    console.log(`${creds.clientIdHeader}:     ${maskValue(creds.clientId)}`);
+    console.log(
+      `${creds.clientSecretHeader}: ${maskValue(creds.clientSecret)}`,
+    );
   } else {
     console.log("Type:   header");
     console.log(`Header: ${creds.headerName}`);
