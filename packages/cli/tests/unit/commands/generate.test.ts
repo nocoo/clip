@@ -121,4 +121,40 @@ describe("generate command", () => {
 
     await expect(generate("/nonexistent/clip.yaml")).rejects.toBeDefined();
   });
+
+  it("skips test generation for cf-access auth schemas", async () => {
+    const cfYaml = `
+name: "CF API"
+alias: cfa
+version: "1.0.0"
+baseUrl: "https://cf.example.com"
+auth:
+  type: cf-access
+endpoints:
+  - name: ping
+    method: GET
+    path: /ping
+    description: "Ping"
+`;
+    const schemaPath = join(tempDir, "cf-clip.yaml");
+    await writeFile(schemaPath, cfYaml);
+
+    const originalCwd = process.cwd();
+    process.chdir(tempDir);
+
+    try {
+      const outputDir = join(tempDir, ".clip-output", "cfa");
+      await rm(outputDir, { recursive: true, force: true }).catch(() => {});
+
+      const { generate } = await import("../../../src/commands/generate");
+      await generate(schemaPath);
+
+      // CLI generated …
+      expect(existsSync(join(outputDir, "src/index.ts"))).toBe(true);
+      // … but no tests/ directory (skipped for cf-access).
+      expect(existsSync(join(outputDir, "tests"))).toBe(false);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
 });

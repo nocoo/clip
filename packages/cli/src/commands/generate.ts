@@ -7,6 +7,9 @@ import { parseClipSchema } from "../schema/parser";
  *
  * Optionally accepts an explicit `outputDir` to override the default
  * `.clip-output/<alias>/` location.
+ *
+ * For `cf-access` schemas, test generation is skipped: live tests require a
+ * single API-key env var, but service tokens are two values (id + secret).
  */
 export async function generate(
   schemaPath: string,
@@ -14,6 +17,12 @@ export async function generate(
 ): Promise<void> {
   const schema = await parseClipSchema(schemaPath);
   const dir = await generateCli(schema, outputDir);
-  await generateTests(schema, dir);
+  if (schema.auth.type === "cf-access") {
+    console.log(
+      "ℹ️  Skipping test generation for cf-access auth (live tests need a single API key; cf-access uses two headers).",
+    );
+  } else {
+    await generateTests(schema, dir);
+  }
   console.log(`✅ CLI generated at ${dir}/`);
 }
