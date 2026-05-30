@@ -7,7 +7,7 @@ import { testCommand } from "./commands/test";
 
 program
   .name("clip")
-  .version("0.0.1")
+  .version("0.0.2")
   .description("Generate CLIs from API schemas");
 
 // clip generate [path]
