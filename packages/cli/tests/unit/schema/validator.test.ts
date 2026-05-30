@@ -251,6 +251,47 @@ describe("ClipSchemaZod", () => {
         }
       });
     });
+
+    describe("cf-access auth", () => {
+      it("validates minimal cf-access auth and applies defaults", () => {
+        const result = ClipSchemaZod.parse(
+          validSchema({ auth: { type: "cf-access" } }),
+        );
+        expect(result.auth.type).toBe("cf-access");
+        if (result.auth.type === "cf-access") {
+          expect(result.auth.clientIdHeader).toBe("CF-Access-Client-Id");
+          expect(result.auth.clientSecretHeader).toBe(
+            "CF-Access-Client-Secret",
+          );
+        }
+      });
+
+      it("allows overriding header names", () => {
+        const result = ClipSchemaZod.parse(
+          validSchema({
+            auth: {
+              type: "cf-access",
+              clientIdHeader: "X-Cf-Id",
+              clientSecretHeader: "X-Cf-Secret",
+            },
+          }),
+        );
+        if (result.auth.type === "cf-access") {
+          expect(result.auth.clientIdHeader).toBe("X-Cf-Id");
+          expect(result.auth.clientSecretHeader).toBe("X-Cf-Secret");
+        }
+      });
+
+      it("rejects empty header names", () => {
+        expect(() =>
+          ClipSchemaZod.parse(
+            validSchema({
+              auth: { type: "cf-access", clientIdHeader: "" },
+            }),
+          ),
+        ).toThrow(ZodError);
+      });
+    });
   });
 
   // --- Endpoint validation ---

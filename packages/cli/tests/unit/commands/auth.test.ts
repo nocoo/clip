@@ -577,3 +577,59 @@ describe("authSet — OAuth schema rejection", () => {
     expect(errorMock.mock.calls[0][0]).toContain("OAuth");
   });
 });
+
+describe("authSet — cf-access schema rejection", () => {
+  it("rejects when clip.yaml declares cf-access auth and no --header is given", async () => {
+    const { authSet } = await import("../../../src/commands/auth");
+
+    const {
+      writeFile,
+      mkdtemp: _mkdtemp,
+      rm: _rm,
+    } = await import("node:fs/promises");
+    const cfDir = await _mkdtemp(join(tmpdir(), "clip-cfa-yaml-"));
+    await writeFile(
+      join(cfDir, "clip.yaml"),
+      [
+        'name: "CF API"',
+        "alias: cf-api",
+        'version: "1.0.0"',
+        'baseUrl: "https://example.com"',
+        "auth:",
+        "  type: cf-access",
+        "endpoints:",
+        "  - name: ping",
+        "    method: GET",
+        "    path: /ping",
+        '    description: "Ping"',
+      ].join("\n"),
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(cfDir);
+
+    const exitMock = mock(() => {
+      throw new Error("process.exit called");
+    });
+    const originalExit = process.exit;
+    process.exit = exitMock as never;
+
+    const errorMock = mock();
+    const originalError = console.error;
+    console.error = errorMock;
+
+    try {
+      await authSet("rejects-cfa", { key: "irrelevant" });
+    } catch {
+      // expected — exit mock throws
+    } finally {
+      process.chdir(originalCwd);
+      await _rm(cfDir, { recursive: true, force: true });
+      process.exit = originalExit;
+      console.error = originalError;
+    }
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    expect(errorMock.mock.calls[0][0]).toContain("Cloudflare Access");
+  });
+});

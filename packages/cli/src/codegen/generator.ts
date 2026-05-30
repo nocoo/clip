@@ -62,10 +62,16 @@ export async function generateCli(
                   tokenParam: auth.tokenParam,
                   ...(auth.loginUrl ? { loginUrl: auth.loginUrl } : {}),
                 }
-              : {
-                  type: auth.type,
-                  headerName: auth.headerName,
-                },
+              : auth.type === "cf-access"
+                ? {
+                    type: "cf-access",
+                    clientIdHeader: auth.clientIdHeader,
+                    clientSecretHeader: auth.clientSecretHeader,
+                  }
+                : {
+                    type: auth.type,
+                    headerName: auth.headerName,
+                  },
           generatedAt: new Date().toISOString(),
         },
         null,

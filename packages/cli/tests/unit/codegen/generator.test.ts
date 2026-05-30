@@ -531,3 +531,40 @@ describe("generateCli — OAuth schemas", () => {
     expect(files).not.toContain("src/commands/_login.ts");
   });
 });
+
+describe("generateCli — cf-access schemas", () => {
+  const CF_SCHEMA: ClipSchema = {
+    name: "Bogo",
+    alias: "bogo",
+    version: "0.2.0",
+    baseUrl: "https://bogo.example.com",
+    auth: {
+      type: "cf-access",
+      clientIdHeader: "CF-Access-Client-Id",
+      clientSecretHeader: "CF-Access-Client-Secret",
+    },
+    endpoints: [
+      {
+        name: "list",
+        method: "GET",
+        path: "/items",
+        description: "List items",
+      },
+    ],
+  };
+
+  it("writes cf-access auth metadata to clip-metadata.json", async () => {
+    const outputDir = join(tempDir, "cfa-meta");
+    await generateCli(CF_SCHEMA, outputDir);
+
+    const metaContent = await readFile(
+      join(outputDir, "clip-metadata.json"),
+      "utf-8",
+    );
+    const meta = JSON.parse(metaContent);
+
+    expect(meta.auth.type).toBe("cf-access");
+    expect(meta.auth.clientIdHeader).toBe("CF-Access-Client-Id");
+    expect(meta.auth.clientSecretHeader).toBe("CF-Access-Client-Secret");
+  });
+});

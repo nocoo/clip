@@ -691,3 +691,31 @@ describe("generateTests — OAuth schemas", () => {
     expect(listContent).toContain('"X-Token": API_KEY');
   });
 });
+
+describe("generateTests — cf-access schemas", () => {
+  it("throws because dual-header auth cannot be tested with one env var", async () => {
+    const cfSchema: ClipSchema = {
+      name: "CF API",
+      alias: "cfa",
+      version: "1.0.0",
+      baseUrl: "https://cf.example.com",
+      auth: {
+        type: "cf-access",
+        clientIdHeader: "CF-Access-Client-Id",
+        clientSecretHeader: "CF-Access-Client-Secret",
+      },
+      endpoints: [
+        {
+          name: "list",
+          method: "GET",
+          path: "/items",
+          description: "List",
+        },
+      ],
+    };
+    const outputDir = join(tempDir, "cfa-test-throws");
+    await expect(generateTests(cfSchema, outputDir)).rejects.toThrow(
+      /cf-access/,
+    );
+  });
+});

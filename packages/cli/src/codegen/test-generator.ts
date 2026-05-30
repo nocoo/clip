@@ -76,6 +76,11 @@ function buildAuthHeaderExpression(schema: ClipSchema): {
       valueExpr: prefix ? `\`${prefix} \${API_KEY}\`` : "API_KEY",
     };
   }
+  if (schema.auth.type === "cf-access") {
+    throw new Error(
+      "Test generation for cf-access auth is not yet supported — service tokens require two headers and cannot be tested via a single CLIP_TEST_API_KEY env var.",
+    );
+  }
   return {
     headerName: schema.auth.headerName,
     valueExpr: "API_KEY",

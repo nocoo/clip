@@ -116,6 +116,12 @@ export async function authSet(
         );
         process.exit(1);
       }
+      if (schema.auth.type === "cf-access") {
+        console.error(
+          `❌ This CLI uses Cloudflare Access authentication. Run: clip auth set ${alias} --client-id <id> --client-secret <secret>`,
+        );
+        process.exit(1);
+      }
       headerName = schema.auth.headerName;
     } catch {
       // No clip.yaml found, require --header

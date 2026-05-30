@@ -83,7 +83,9 @@ describe("parseClipSchema", () => {
     expect(schema.version).toBe("1.0.0");
     expect(schema.baseUrl).toBe("http://localhost:3000");
     expect(schema.auth.type).toBe("header");
-    expect(schema.auth.headerName).toBe("X-API-Key");
+    if (schema.auth.type === "header") {
+      expect(schema.auth.headerName).toBe("X-API-Key");
+    }
     expect(schema.endpoints).toHaveLength(3);
     expect(schema.endpoints[0].name).toBe("list");
     expect(schema.endpoints[1].name).toBe("create");

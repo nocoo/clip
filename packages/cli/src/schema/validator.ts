@@ -91,9 +91,16 @@ const OAuthAuthSchema = z.object({
   headerPrefix: z.string().default("Bearer"),
 });
 
+const CFAccessAuthSchema = z.object({
+  type: z.literal("cf-access"),
+  clientIdHeader: z.string().min(1).default("CF-Access-Client-Id"),
+  clientSecretHeader: z.string().min(1).default("CF-Access-Client-Secret"),
+});
+
 const AuthSchema = z.discriminatedUnion("type", [
   HeaderAuthSchema,
   OAuthAuthSchema,
+  CFAccessAuthSchema,
 ]);
 
 export const ClipSchemaZod = z.object({
