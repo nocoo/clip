@@ -90,7 +90,7 @@ export function renderClient(schema: ClipSchema): string {
 interface RequestOptions {
   method: string;
   path: string;
-  query?: Record<string, string>;
+  query?: Record<string, string | undefined>;
   body?: Record<string, unknown>;
 }
 
