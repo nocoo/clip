@@ -98,14 +98,26 @@ export async function authLogin(
 
 /**
  * `clip auth set <alias>` — save API key credentials.
+ *
+ * For schemas with `auth.type: cf-access`, pass --client-id and --client-secret
+ * (or omit them to be prompted). For `auth.type: header`, pass --key (or omit
+ * to be prompted). OAuth schemas must use `clip auth login` instead.
  */
 export async function authSet(
   alias: string,
-  options: { key?: string; header?: string },
+  options: {
+    key?: string;
+    header?: string;
+    clientId?: string;
+    clientSecret?: string;
+  },
 ): Promise<void> {
   let headerName = options.header;
+  let cfAccessAuth: {
+    clientIdHeader: string;
+    clientSecretHeader: string;
+  } | null = null;
 
-  // Try to read headerName from clip.yaml if not provided
   if (!headerName) {
     try {
       const { parseClipSchema } = await import("../schema/parser");
@@ -117,15 +129,55 @@ export async function authSet(
         process.exit(1);
       }
       if (schema.auth.type === "cf-access") {
-        console.error(
-          `❌ This CLI uses Cloudflare Access authentication. Run: clip auth set ${alias} --client-id <id> --client-secret <secret>`,
-        );
-        process.exit(1);
+        cfAccessAuth = {
+          clientIdHeader: schema.auth.clientIdHeader,
+          clientSecretHeader: schema.auth.clientSecretHeader,
+        };
+      } else {
+        headerName = schema.auth.headerName;
       }
-      headerName = schema.auth.headerName;
     } catch {
       // No clip.yaml found, require --header
     }
+  }
+
+  if (cfAccessAuth) {
+    let clientId = options.clientId;
+    let clientSecret = options.clientSecret;
+
+    // Reject explicit empty values up-front (don't prompt over them).
+    if (clientId === "" || clientSecret === "") {
+      console.error("❌ Both --client-id and --client-secret are required");
+      process.exit(1);
+    }
+
+    /* v8 ignore start -- interactive prompts, not unit-testable */
+    if (clientId === undefined) {
+      clientId = await promptSecret(
+        `Enter Client ID for "${alias}" (${cfAccessAuth.clientIdHeader}): `,
+      );
+    }
+    if (clientSecret === undefined) {
+      clientSecret = await promptSecret(
+        `Enter Client Secret for "${alias}" (${cfAccessAuth.clientSecretHeader}): `,
+      );
+    }
+    /* v8 ignore stop */
+
+    if (!clientId || !clientSecret) {
+      console.error("❌ Both --client-id and --client-secret are required");
+      process.exit(1);
+    }
+
+    await saveCredentials(alias, {
+      type: "cf-access",
+      clientId,
+      clientSecret,
+      clientIdHeader: cfAccessAuth.clientIdHeader,
+      clientSecretHeader: cfAccessAuth.clientSecretHeader,
+    });
+    console.log(`✅ Credentials saved for "${alias}"`);
+    return;
   }
 
   if (!headerName) {

@@ -605,7 +605,7 @@ describe("authSet — OAuth schema rejection", () => {
 });
 
 describe("authSet — cf-access schema rejection", () => {
-  it("rejects when clip.yaml declares cf-access auth and no --header is given", async () => {
+  it("rejects when only --client-id is given without --client-secret", async () => {
     const { authSet } = await import("../../../src/commands/auth");
 
     const {
@@ -644,8 +644,13 @@ describe("authSet — cf-access schema rejection", () => {
     const originalError = console.error;
     console.error = errorMock;
 
+    // Force the prompt path to short-circuit by providing one but not the
+    // other AND treating empty as missing.
     try {
-      await authSet("rejects-cfa", { key: "irrelevant" });
+      await authSet("rejects-cfa", {
+        clientId: "abc.access",
+        clientSecret: "",
+      });
     } catch {
       // expected — exit mock throws
     } finally {
@@ -656,6 +661,57 @@ describe("authSet — cf-access schema rejection", () => {
     }
 
     expect(exitMock).toHaveBeenCalledWith(1);
-    expect(errorMock.mock.calls[0][0]).toContain("Cloudflare Access");
+    expect(errorMock.mock.calls[0][0]).toContain("--client-id");
+  });
+
+  it("saves cf-access creds when --client-id and --client-secret are provided", async () => {
+    const { authSet } = await import("../../../src/commands/auth");
+
+    const {
+      writeFile,
+      mkdtemp: _mkdtemp,
+      rm: _rm,
+    } = await import("node:fs/promises");
+    const cfDir = await _mkdtemp(join(tmpdir(), "clip-cfa-save-"));
+    await writeFile(
+      join(cfDir, "clip.yaml"),
+      [
+        'name: "CF API"',
+        "alias: cf-api",
+        'version: "1.0.0"',
+        'baseUrl: "https://example.com"',
+        "auth:",
+        "  type: cf-access",
+        '  clientIdHeader: "X-Cf-Id"',
+        '  clientSecretHeader: "X-Cf-Secret"',
+        "endpoints:",
+        "  - name: ping",
+        "    method: GET",
+        "    path: /ping",
+        '    description: "Ping"',
+      ].join("\n"),
+    );
+
+    const originalCwd = process.cwd();
+    process.chdir(cfDir);
+
+    try {
+      await authSet("cfa-save", {
+        clientId: "abc.access",
+        clientSecret: "topsecret",
+      });
+    } finally {
+      process.chdir(originalCwd);
+      await _rm(cfDir, { recursive: true, force: true });
+    }
+
+    const creds = await storage.loadCredentials("cfa-save");
+    expect(creds).toEqual({
+      type: "cf-access",
+      clientId: "abc.access",
+      clientSecret: "topsecret",
+      clientIdHeader: "X-Cf-Id",
+      clientSecretHeader: "X-Cf-Secret",
+    });
   });
 });

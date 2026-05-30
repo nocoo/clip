@@ -47,9 +47,27 @@ auth
     "API key value (Warning: key may be visible in shell history. Use interactive prompt for sensitive keys)",
   )
   .option("--header <name>", "Auth header name")
-  .action(async (alias: string, opts: { key?: string; header?: string }) => {
-    await authSet(alias, opts);
-  });
+  .option(
+    "--client-id <value>",
+    "CF Access service token Client ID (cf-access auth only)",
+  )
+  .option(
+    "--client-secret <value>",
+    "CF Access service token Client Secret (cf-access auth only)",
+  )
+  .action(
+    async (
+      alias: string,
+      opts: {
+        key?: string;
+        header?: string;
+        clientId?: string;
+        clientSecret?: string;
+      },
+    ) => {
+      await authSet(alias, opts);
+    },
+  );
 
 auth
   .command("login <alias>")
