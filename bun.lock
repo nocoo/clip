@@ -14,7 +14,7 @@
     },
     "packages/cli": {
       "name": "@clip/cli",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "bin": {
         "clip": "src/index.ts",
       },
@@ -27,14 +27,14 @@
     },
     "packages/example-api": {
       "name": "@clip/example-api",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
-        "hono": "^4.12.18",
+        "hono": "4.12.24",
       },
     },
     "packages/web": {
       "name": "@clip/web",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "astro": "^6.1.6",
       },
@@ -512,7 +512,7 @@
 
     "hastscript": ["hastscript@9.0.1", "", { "dependencies": { "@types/hast": "^3.0.0", "comma-separated-tokens": "^2.0.0", "hast-util-parse-selector": "^4.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0" } }, "sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w=="],
 
-    "hono": ["hono@4.12.18", "", {}, "sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ=="],
+    "hono": ["hono@4.12.24", "", {}, "sha512-I36D1s+HgQc55KbhEr4iybfxv/9o1zdpw+XEM6dJa91LqQD0HCoSGdxpRJCZE+aavs87j4V3Ls2OJzq8C/U4iw=="],
 
     "html-escaper": ["html-escaper@3.0.3", "", {}, "sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ=="],
 
