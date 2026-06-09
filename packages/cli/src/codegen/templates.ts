@@ -266,7 +266,7 @@ ${coercions.length > 0 ? `${coercions.join("\n")}\n` : ""}  const path = "${endp
  */
 export function renderPackageJson(schema: ClipSchema): string {
   const dependencies: Record<string, string> = {
-    commander: "^14.0.0",
+    commander: "^15.0.0",
   };
   if (schema.auth.type === "oauth") {
     dependencies["@nocoo/cli-base"] = "^0.2.0";
