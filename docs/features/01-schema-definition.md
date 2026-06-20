@@ -53,7 +53,6 @@ The `clip.yaml` file is the single source of truth for a clip project. It define
 | `items` | `ParamDef` | Conditional | Required when `type` is `"array"`. Describes the element type |
 | `enum` | `(string \| number)[]` | No | Restrict value to a fixed set of allowed values |
 | `nullable` | `boolean` | No | Whether the parameter accepts `null` (default: `false`) |
-| `sourceName` | `string` | No | Original wire-format name when it differs from the schema key. Codegen uses this as the query/body/path name on the wire while the key remains the JS identifier. Primarily emitted by the OpenAPI adapter (see [07-openapi-input.md](./07-openapi-input.md) §4.7) when an OpenAPI parameter name is not a valid JavaScript identifier (e.g., `user-id`, `filter[active]`). Hand-written schemas typically omit it. |
 
 ### ResponseSchema
 

@@ -10,4 +10,3 @@ Detailed design documents for each feature area of clip.
 | 04 | [Test Generation](./04-test-generation.md) | Automatic test suite generation from schema definitions |
 | 05 | [Example API](./05-example-api.md) | Hono-based Todo App for dogfooding and integration testing |
 | 06 | [Marketing Website](./06-marketing-website.md) | Astro static site for marketing and documentation |
-| 07 | [OpenAPI Input](./07-openapi-input.md) | `clip generate --from openapi.json` adapter — eliminates hand-written `clip.yaml` when an OpenAPI 3.x spec is available |
