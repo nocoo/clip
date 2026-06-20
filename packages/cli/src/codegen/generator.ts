@@ -25,7 +25,7 @@ export async function generateCli(
   await mkdir(join(dir, "src", "commands"), { recursive: true });
 
   const auth = schema.auth;
-  const isOAuth = auth.type === "oauth";
+  const isBrowserLogin = auth.type === "browser-login";
 
   const writes: Promise<void>[] = [
     // package.json
@@ -53,9 +53,9 @@ export async function generateCli(
           alias: schema.alias,
           baseUrl: schema.baseUrl,
           auth:
-            auth.type === "oauth"
+            auth.type === "browser-login"
               ? {
-                  type: "oauth",
+                  type: "browser-login",
                   headerName: auth.headerName,
                   headerPrefix: auth.headerPrefix,
                   loginPath: auth.loginPath,
@@ -80,7 +80,7 @@ export async function generateCli(
     ),
   ];
 
-  if (isOAuth) {
+  if (isBrowserLogin) {
     writes.push(
       writeFile(
         join(dir, "src", "commands", "_login.ts"),

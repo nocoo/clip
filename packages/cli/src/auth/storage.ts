@@ -8,8 +8,8 @@ export interface HeaderCredentials {
   headerValue: string;
 }
 
-export interface OAuthCredentials {
-  type: "oauth";
+export interface BrowserLoginCredentials {
+  type: "browser-login";
   token: string;
   email?: string;
   expiresAt?: string;
@@ -25,7 +25,7 @@ export interface CFAccessCredentials {
 
 export type Credentials =
   | HeaderCredentials
-  | OAuthCredentials
+  | BrowserLoginCredentials
   | CFAccessCredentials;
 
 export function getClipHome(): string {
@@ -51,10 +51,6 @@ export async function saveCredentials(
 
 /**
  * Load credentials from disk.
- *
- * Backward compatibility: credentials saved before the discriminated-union
- * upgrade have no `type` field. They are treated as `HeaderCredentials`
- * provided they have `headerName` + `headerValue`.
  */
 export async function loadCredentials(
   alias: string,
@@ -63,25 +59,14 @@ export async function loadCredentials(
   try {
     const raw = await readFile(filePath, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    if (parsed.type === "oauth") {
-      return parsed as unknown as OAuthCredentials;
+    if (parsed.type === "browser-login") {
+      return parsed as unknown as BrowserLoginCredentials;
     }
     if (parsed.type === "cf-access") {
       return parsed as unknown as CFAccessCredentials;
     }
     if (parsed.type === "header") {
       return parsed as unknown as HeaderCredentials;
-    }
-    // Legacy file without `type` — assume header credentials.
-    if (
-      typeof parsed.headerName === "string" &&
-      typeof parsed.headerValue === "string"
-    ) {
-      return {
-        type: "header",
-        headerName: parsed.headerName,
-        headerValue: parsed.headerValue,
-      };
     }
     return null;
   } catch {

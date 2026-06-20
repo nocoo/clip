@@ -71,7 +71,7 @@ auth
 
 auth
   .command("login <alias>")
-  .description("Authenticate via browser-based OAuth flow")
+  .description("Authenticate via browser-based login flow")
   .action(async (alias: string) => {
     await authLogin(alias);
   });

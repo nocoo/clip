@@ -8,11 +8,11 @@ import {
 import type { ClipSchema } from "../schema/types";
 
 /**
- * `clip auth login <alias>` — perform browser-based OAuth login flow.
+ * `clip auth login <alias>` — perform browser-based login flow.
  *
- * Reads the local `clip.yaml` to discover OAuth configuration, runs
+ * Reads the local `clip.yaml` to discover browser-login configuration, runs
  * `performLogin()` from `@nocoo/cli-base`, and stores the received token
- * as OAuthCredentials.
+ * as BrowserLoginCredentials.
  */
 export async function authLogin(
   alias: string,
@@ -41,22 +41,22 @@ export async function authLogin(
     process.exit(1);
   }
 
-  if (schema.auth.type !== "oauth") {
+  if (schema.auth.type !== "browser-login") {
     console.error(
       `❌ This CLI uses ${schema.auth.type} authentication. Run: clip auth set ${alias}`,
     );
     process.exit(1);
   }
 
-  const oauth = schema.auth;
-  // Resolve the SaaS apiUrl: either the absolute loginUrl, or the baseUrl
+  const browserLogin = schema.auth;
+  // Resolve the apiUrl: either the absolute loginUrl, or the baseUrl
   // (loginPath is appended by performLogin via its `loginPath` option).
-  const apiUrl = oauth.loginUrl
-    ? new URL(oauth.loginUrl).origin
+  const apiUrl = browserLogin.loginUrl
+    ? new URL(browserLogin.loginUrl).origin
     : schema.baseUrl;
-  const loginPath = oauth.loginUrl
-    ? new URL(oauth.loginUrl).pathname
-    : oauth.loginPath;
+  const loginPath = browserLogin.loginUrl
+    ? new URL(browserLogin.loginUrl).pathname
+    : browserLogin.loginPath;
 
   const cliBase = await import("@nocoo/cli-base");
   /* v8 ignore start -- production fallbacks; tests inject mocks */
@@ -70,7 +70,7 @@ export async function authLogin(
   const result = await performLogin({
     apiUrl,
     loginPath,
-    tokenParam: oauth.tokenParam,
+    tokenParam: browserLogin.tokenParam,
     timeoutMs: deps.timeoutMs ?? 5 * 60 * 1000,
     openBrowser,
     onSaveToken: (token: string) => {
@@ -86,7 +86,7 @@ export async function authLogin(
   }
 
   await saveCredentials(alias, {
-    type: "oauth",
+    type: "browser-login",
     token: savedToken,
     email: result.email,
   });
@@ -101,7 +101,7 @@ export async function authLogin(
  *
  * For schemas with `auth.type: cf-access`, pass --client-id and --client-secret
  * (or omit them to be prompted). For `auth.type: header`, pass --key (or omit
- * to be prompted). OAuth schemas must use `clip auth login` instead.
+ * to be prompted). browser-login schemas must use `clip auth login` instead.
  */
 export async function authSet(
   alias: string,
@@ -122,9 +122,9 @@ export async function authSet(
     try {
       const { parseClipSchema } = await import("../schema/parser");
       const schema = await parseClipSchema("clip.yaml");
-      if (schema.auth.type === "oauth") {
+      if (schema.auth.type === "browser-login") {
         console.error(
-          `❌ This CLI uses OAuth authentication. Run: clip auth login ${alias}`,
+          `❌ This CLI uses browser-login authentication. Run: clip auth login ${alias}`,
         );
         process.exit(1);
       }
@@ -218,8 +218,8 @@ export async function authShow(alias: string): Promise<void> {
 
   const credPath = await getCredentialsPath(alias);
   console.log(`Alias:  ${alias}`);
-  if (creds.type === "oauth") {
-    console.log("Type:   oauth");
+  if (creds.type === "browser-login") {
+    console.log("Type:   browser-login");
     if (creds.email) console.log(`Email:  ${creds.email}`);
     if (creds.expiresAt) console.log(`Expires: ${creds.expiresAt}`);
     console.log(`Token:  ${maskValue(creds.token)}`);

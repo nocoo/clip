@@ -195,50 +195,32 @@ describe("CLIP_HOME override", () => {
   });
 });
 
-describe("OAuth credentials", () => {
-  it("saves and loads OAuth credentials with all fields", async () => {
-    await storage.saveCredentials("oauth-test", {
-      type: "oauth",
-      token: "oauth-secret-token",
+describe("browser-login credentials", () => {
+  it("saves and loads browser-login credentials with all fields", async () => {
+    await storage.saveCredentials("browser-login-test", {
+      type: "browser-login",
+      token: "browser-login-secret-token",
       email: "user@example.com",
       expiresAt: "2026-12-31T00:00:00Z",
     });
 
-    const creds = await storage.loadCredentials("oauth-test");
+    const creds = await storage.loadCredentials("browser-login-test");
     expect(creds).toEqual({
-      type: "oauth",
-      token: "oauth-secret-token",
+      type: "browser-login",
+      token: "browser-login-secret-token",
       email: "user@example.com",
       expiresAt: "2026-12-31T00:00:00Z",
     });
   });
 
-  it("saves and loads OAuth credentials with only token", async () => {
-    await storage.saveCredentials("oauth-minimal", {
-      type: "oauth",
+  it("saves and loads browser-login credentials with only token", async () => {
+    await storage.saveCredentials("browser-login-minimal", {
+      type: "browser-login",
       token: "minimal-token",
     });
 
-    const creds = await storage.loadCredentials("oauth-minimal");
-    expect(creds).toEqual({ type: "oauth", token: "minimal-token" });
-  });
-
-  it("backward-compat: legacy file without type is treated as header", async () => {
-    // Write a legacy file directly to disk
-    const dir = join(tempDir, "legacy-alias");
-    const { mkdir, writeFile } = await import("node:fs/promises");
-    await mkdir(dir, { recursive: true });
-    await writeFile(
-      join(dir, "credentials.json"),
-      JSON.stringify({ headerName: "X-Legacy", headerValue: "legacy-value" }),
-    );
-
-    const creds = await storage.loadCredentials("legacy-alias");
-    expect(creds).toEqual({
-      type: "header",
-      headerName: "X-Legacy",
-      headerValue: "legacy-value",
-    });
+    const creds = await storage.loadCredentials("browser-login-minimal");
+    expect(creds).toEqual({ type: "browser-login", token: "minimal-token" });
   });
 });
 

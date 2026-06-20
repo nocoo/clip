@@ -48,9 +48,9 @@ export async function generateTests(
     writes.push(writeFile(join(testsDir, "crud-sequence.test.ts"), content));
   }
 
-  // For OAuth schemas, drop a README.md noting that tests authenticate via
-  // OAuth (CLIP_TEST_API_KEY is the OAuth token, prefixed appropriately).
-  if (schema.auth.type === "oauth") {
+  // For browser-login schemas, drop a README.md noting that tests authenticate via
+  // browser-login (CLIP_TEST_API_KEY is the login token, prefixed appropriately).
+  if (schema.auth.type === "browser-login") {
     const readme = renderTestsReadme(schema);
     writes.push(writeFile(join(testsDir, "README.md"), readme));
   }
@@ -61,7 +61,7 @@ export async function generateTests(
 /**
  * Compute the runtime header value for a CLIP_TEST_API_KEY env var:
  * - For "header" auth: the env var value verbatim.
- * - For "oauth" auth: the env var value is the bare token; we wrap it with
+ * - For "browser-login" auth: the env var value is the bare token; we wrap it with
  *   the configured headerPrefix when building the request header.
  */
 function buildAuthHeaderExpression(schema: ClipSchema): {
@@ -69,7 +69,7 @@ function buildAuthHeaderExpression(schema: ClipSchema): {
   /** A JS template-string-like expression that produces the header value. */
   valueExpr: string;
 } {
-  if (schema.auth.type === "oauth") {
+  if (schema.auth.type === "browser-login") {
     const prefix = schema.auth.headerPrefix;
     return {
       headerName: schema.auth.headerName,
@@ -89,19 +89,19 @@ function buildAuthHeaderExpression(schema: ClipSchema): {
 
 function renderTestsReadme(schema: ClipSchema): string {
   /* v8 ignore start -- defensive guard; caller already checks auth.type */
-  if (schema.auth.type !== "oauth") {
-    throw new Error("renderTestsReadme requires auth.type === oauth");
+  if (schema.auth.type !== "browser-login") {
+    throw new Error("renderTestsReadme requires auth.type === browser-login");
   }
   /* v8 ignore stop */
   const auth = schema.auth;
   return `# Generated tests
 
-This CLI uses **OAuth** authentication. Before running these tests, log in
-with the generated CLI to obtain an OAuth token:
+This CLI uses **browser-login** authentication. Before running these tests,
+log in with the generated CLI to obtain a token:
 
     bunx ${schema.alias} login
 
-The test runner (\`clip test ${schema.alias}\`) loads the saved OAuth token
+The test runner (\`clip test ${schema.alias}\`) loads the saved token
 and exposes it through \`CLIP_TEST_API_KEY\`. Each request is signed with
 \`${auth.headerName}: ${auth.headerPrefix ? `${auth.headerPrefix} ` : ""}<token>\`.
 

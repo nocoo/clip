@@ -82,8 +82,8 @@ const HeaderAuthSchema = z.object({
   headerName: z.string().min(1),
 });
 
-const OAuthAuthSchema = z.object({
-  type: z.literal("oauth"),
+const BrowserLoginAuthSchema = z.object({
+  type: z.literal("browser-login"),
   loginUrl: z.string().url().optional(),
   tokenParam: z.string().min(1).default("api_key"),
   loginPath: z.string().startsWith("/").default("/api/auth/cli"),
@@ -99,7 +99,7 @@ const CFAccessAuthSchema = z.object({
 
 const AuthSchema = z.discriminatedUnion("type", [
   HeaderAuthSchema,
-  OAuthAuthSchema,
+  BrowserLoginAuthSchema,
   CFAccessAuthSchema,
 ]);
 
@@ -167,14 +167,14 @@ export function validateSemantics(schema: ClipSchema): ValidationError[] {
     methodPaths.add(key);
   }
 
-  // 5. Reserved endpoint names for OAuth (login/logout collide with generated commands)
-  if (schema.auth.type === "oauth") {
+  // 5. Reserved endpoint names for browser-login (login/logout collide with generated commands)
+  if (schema.auth.type === "browser-login") {
     const reserved = new Set(["login", "logout"]);
     for (const ep of schema.endpoints) {
       if (reserved.has(ep.name)) {
         errors.push({
           path: `endpoints.${ep.name}`,
-          message: `Endpoint name "${ep.name}" is reserved for OAuth schemas (collides with generated command)`,
+          message: `Endpoint name "${ep.name}" is reserved for browser-login schemas (collides with generated command)`,
         });
       }
     }

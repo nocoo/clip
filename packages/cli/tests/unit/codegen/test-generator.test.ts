@@ -572,14 +572,14 @@ describe("generateTests", () => {
   });
 });
 
-describe("generateTests — OAuth schemas", () => {
+describe("generateTests — browser-login schemas", () => {
   const OAUTH_SCHEMA: ClipSchema = {
-    name: "OAuth API",
+    name: "browser-login API",
     alias: "oapi",
     version: "1.0.0",
     baseUrl: "https://api.example.com",
     auth: {
-      type: "oauth",
+      type: "browser-login",
       tokenParam: "api_key",
       loginPath: "/api/auth/cli",
       headerName: "Authorization",
@@ -616,8 +616,8 @@ describe("generateTests — OAuth schemas", () => {
     ],
   };
 
-  it("wraps API_KEY with the OAuth header prefix in standalone tests", async () => {
-    const outputDir = join(tempDir, "oauth-standalone");
+  it("wraps API_KEY with the browser-login header prefix in standalone tests", async () => {
+    const outputDir = join(tempDir, "browser-login-standalone");
     await generateTests(OAUTH_SCHEMA, outputDir);
 
     const listContent = await readFile(
@@ -632,8 +632,8 @@ describe("generateTests — OAuth schemas", () => {
     expect(listContent).not.toMatch(/"Authorization":\s*API_KEY\b/);
   });
 
-  it("wraps API_KEY with the OAuth header prefix in CRUD sequence tests", async () => {
-    const outputDir = join(tempDir, "oauth-crud");
+  it("wraps API_KEY with the browser-login header prefix in CRUD sequence tests", async () => {
+    const outputDir = join(tempDir, "browser-login-crud");
     await generateTests(OAUTH_SCHEMA, outputDir);
 
     const crudContent = await readFile(
@@ -647,13 +647,13 @@ describe("generateTests — OAuth schemas", () => {
     expect(crudContent).not.toMatch(/"Authorization":\s*API_KEY\b/);
   });
 
-  it("emits a tests/README.md for OAuth schemas", async () => {
-    const outputDir = join(tempDir, "oauth-readme");
+  it("emits a tests/README.md for browser-login schemas", async () => {
+    const outputDir = join(tempDir, "browser-login-readme");
     await generateTests(OAUTH_SCHEMA, outputDir);
 
     const readme = await readFile(join(outputDir, "tests/README.md"), "utf-8");
 
-    expect(readme).toContain("OAuth");
+    expect(readme).toContain("browser-login");
     expect(readme).toContain("bunx oapi login");
     expect(readme).toContain("CLIP_TEST_API_KEY");
     expect(readme).toContain("Authorization: Bearer <token>");
@@ -672,7 +672,7 @@ describe("generateTests — OAuth schemas", () => {
     const noPrefixSchema: ClipSchema = {
       ...OAUTH_SCHEMA,
       auth: {
-        type: "oauth",
+        type: "browser-login",
         tokenParam: "api_key",
         loginPath: "/api/auth/cli",
         headerName: "X-Token",
@@ -680,7 +680,7 @@ describe("generateTests — OAuth schemas", () => {
       },
     };
 
-    const outputDir = join(tempDir, "oauth-no-prefix");
+    const outputDir = join(tempDir, "browser-login-no-prefix");
     await generateTests(noPrefixSchema, outputDir);
 
     const listContent = await readFile(

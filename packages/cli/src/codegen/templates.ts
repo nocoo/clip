@@ -57,7 +57,7 @@ ${options.join("\n")}
 
   return `#!/usr/bin/env bun
 import { program } from "commander";
-${imports}${schema.auth.type === "oauth" ? '\nimport { loginCommand } from "./commands/_login";' : ""}
+${imports}${schema.auth.type === "browser-login" ? '\nimport { loginCommand } from "./commands/_login";' : ""}
 
 program
   .name("${schema.alias}")
@@ -65,10 +65,10 @@ program
   .description("${schema.name}");
 
 ${
-  schema.auth.type === "oauth"
+  schema.auth.type === "browser-login"
     ? `program
   .command("login")
-  .description("Authenticate via browser-based OAuth flow")
+  .description("Authenticate via browser-based login flow")
   .action(async () => {
     await loginCommand();
   });
@@ -134,17 +134,20 @@ export const client = {
  * The generated `loadConfig()` returns `{ headers: Record<string, string> }`,
  * a map of HTTP headers to inject into every request. The shape supports:
  * - "header" credentials → single header
- * - "oauth" credentials → single Authorization-style header
+ * - "browser-login" credentials → single Authorization-style header
  * - "cf-access" credentials → two headers (Client-Id and Client-Secret)
- * - legacy files without `type` → single header (back-compat)
  */
 export function renderConfig(schema: ClipSchema): string {
   const auth = schema.auth;
-  const isOAuth = auth.type === "oauth";
-  const oauthHeaderName = isOAuth ? auth.headerName : "Authorization";
-  const oauthHeaderPrefix = isOAuth ? auth.headerPrefix : "Bearer";
+  const isBrowserLogin = auth.type === "browser-login";
+  const browserLoginHeaderName = isBrowserLogin
+    ? auth.headerName
+    : "Authorization";
+  const browserLoginHeaderPrefix = isBrowserLogin
+    ? auth.headerPrefix
+    : "Bearer";
   const loginHint =
-    auth.type === "oauth"
+    auth.type === "browser-login"
       ? `${schema.alias} login`
       : auth.type === "cf-access"
         ? `clip auth set ${schema.alias} --client-id <id> --client-secret <secret>`
@@ -170,12 +173,12 @@ export async function loadConfig(): Promise<ResolvedConfig> {
   }
 
   const parsed = JSON.parse(raw) as Record<string, unknown>;
-  if (parsed.type === "oauth") {
+  if (parsed.type === "browser-login") {
     const token = String(parsed.token ?? "");
-    const prefix = "${oauthHeaderPrefix}";
+    const prefix = "${browserLoginHeaderPrefix}";
     return {
       headers: {
-        "${oauthHeaderName}": prefix ? prefix + " " + token : token,
+        "${browserLoginHeaderName}": prefix ? prefix + " " + token : token,
       },
     };
   }
@@ -190,7 +193,6 @@ export async function loadConfig(): Promise<ResolvedConfig> {
       },
     };
   }
-  // header credentials (current or legacy)
   return {
     headers: {
       [String(parsed.headerName ?? "")]: String(parsed.headerValue ?? ""),
@@ -268,7 +270,7 @@ export function renderPackageJson(schema: ClipSchema): string {
   const dependencies: Record<string, string> = {
     commander: "^15.0.0",
   };
-  if (schema.auth.type === "oauth") {
+  if (schema.auth.type === "browser-login") {
     dependencies["@nocoo/cli-base"] = "^0.2.0";
   }
   const pkg = {
@@ -288,16 +290,16 @@ export function renderPackageJson(schema: ClipSchema): string {
 }
 
 /**
- * Renders the OAuth login subcommand for the generated CLI.
+ * Renders the browser-login subcommand for the generated CLI.
  *
- * The generated `login` command opens the configured SaaS auth URL in a
+ * The generated `login` command opens the configured auth URL in a
  * browser, waits for the loopback callback with the api token, and saves
- * the result as OAuthCredentials under `~/.clip/<alias>/credentials.json`.
+ * the result as BrowserLoginCredentials under `~/.clip/<alias>/credentials.json`.
  */
 export function renderLoginCommand(schema: ClipSchema): string {
   /* v8 ignore start -- defensive guard; caller already checks auth.type */
-  if (schema.auth.type !== "oauth") {
-    throw new Error("renderLoginCommand requires auth.type === oauth");
+  if (schema.auth.type !== "browser-login") {
+    throw new Error("renderLoginCommand requires auth.type === browser-login");
   }
   /* v8 ignore stop */
   const a = schema.auth;
@@ -347,7 +349,7 @@ export async function loginCommand(): Promise<void> {
     credPath,
     JSON.stringify(
       {
-        type: "oauth",
+        type: "browser-login",
         token: savedToken,
         ...(result.email ? { email: result.email } : {}),
       },

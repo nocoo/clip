@@ -46,10 +46,10 @@ export async function testCommand(
   const creds = await loadCredentials(alias);
 
   // Extract a token-like value to expose as CLIP_TEST_API_KEY for both
-  // header-based and OAuth-based generated tests.
+  // header-based and browser-login-based generated tests.
   let credValue = "";
   if (creds?.type === "header") credValue = creds.headerValue;
-  else if (creds?.type === "oauth") credValue = creds.token;
+  else if (creds?.type === "browser-login") credValue = creds.token;
 
   const env = {
     ...process.env,

@@ -377,14 +377,14 @@ describe("generateCli", () => {
   });
 });
 
-describe("generateCli — OAuth schemas", () => {
+describe("generateCli — browser-login schemas", () => {
   const OAUTH_SCHEMA: ClipSchema = {
-    name: "OAuth API",
+    name: "browser-login API",
     alias: "oapi",
     version: "1.0.0",
     baseUrl: "https://api.example.com",
     auth: {
-      type: "oauth",
+      type: "browser-login",
       loginUrl: "https://app.example.com/auth/cli",
       tokenParam: "token",
       loginPath: "/auth/cli",
@@ -402,7 +402,7 @@ describe("generateCli — OAuth schemas", () => {
   };
 
   it("emits a _login.ts command file", async () => {
-    const outputDir = join(tempDir, "oauth-login-cmd");
+    const outputDir = join(tempDir, "browser-login-login-cmd");
     await generateCli(OAUTH_SCHEMA, outputDir);
 
     const loginContent = await readFile(
@@ -418,14 +418,14 @@ describe("generateCli — OAuth schemas", () => {
     expect(loginContent).toContain('"https://app.example.com"');
     expect(loginContent).toContain('"/auth/cli"');
     expect(loginContent).toContain('"token"');
-    // Persists OAuth credentials with type tag and 0600 permissions
-    expect(loginContent).toContain('type: "oauth"');
+    // Persists browser-login credentials with type tag and 0600 permissions
+    expect(loginContent).toContain('type: "browser-login"');
     expect(loginContent).toContain("0o600");
     expect(loginContent).toContain("0o700");
   });
 
   it("registers a 'login' subcommand in index.ts", async () => {
-    const outputDir = join(tempDir, "oauth-index");
+    const outputDir = join(tempDir, "browser-login-index");
     await generateCli(OAUTH_SCHEMA, outputDir);
 
     const indexContent = await readFile(
@@ -438,8 +438,8 @@ describe("generateCli — OAuth schemas", () => {
     expect(indexContent).toContain("loginCommand()");
   });
 
-  it("renders a unified loadConfig that resolves OAuth credentials", async () => {
-    const outputDir = join(tempDir, "oauth-config");
+  it("renders a unified loadConfig that resolves browser-login credentials", async () => {
+    const outputDir = join(tempDir, "browser-login-config");
     await generateCli(OAUTH_SCHEMA, outputDir);
 
     const configContent = await readFile(
@@ -450,16 +450,16 @@ describe("generateCli — OAuth schemas", () => {
     // Returns the uniform { headers } shape
     expect(configContent).toContain("headers: Record<string, string>");
     // Branch on the credential type tag
-    expect(configContent).toContain('parsed.type === "oauth"');
+    expect(configContent).toContain('parsed.type === "browser-login"');
     // Uses the configured headerName + prefix when constructing the value
     expect(configContent).toContain('"Authorization"');
     expect(configContent).toContain('"Bearer"');
-    // Login hint points users at the login subcommand for OAuth aliases
+    // Login hint points users at the login subcommand for browser-login aliases
     expect(configContent).toContain("oapi login");
   });
 
-  it("adds @nocoo/cli-base to generated package.json for OAuth schemas", async () => {
-    const outputDir = join(tempDir, "oauth-pkg");
+  it("adds @nocoo/cli-base to generated package.json for browser-login schemas", async () => {
+    const outputDir = join(tempDir, "browser-login-pkg");
     await generateCli(OAUTH_SCHEMA, outputDir);
 
     const pkg = JSON.parse(
@@ -481,15 +481,15 @@ describe("generateCli — OAuth schemas", () => {
     expect(pkg.dependencies["@nocoo/cli-base"]).toBeUndefined();
   });
 
-  it("clip-metadata.json captures the OAuth login parameters", async () => {
-    const outputDir = join(tempDir, "oauth-meta");
+  it("clip-metadata.json captures the browser-login login parameters", async () => {
+    const outputDir = join(tempDir, "browser-login-meta");
     await generateCli(OAUTH_SCHEMA, outputDir);
 
     const meta = JSON.parse(
       await readFile(join(outputDir, "clip-metadata.json"), "utf-8"),
     );
 
-    expect(meta.auth.type).toBe("oauth");
+    expect(meta.auth.type).toBe("browser-login");
     expect(meta.auth.headerName).toBe("Authorization");
     expect(meta.auth.headerPrefix).toBe("Bearer");
     expect(meta.auth.loginPath).toBe("/auth/cli");
@@ -501,7 +501,7 @@ describe("generateCli — OAuth schemas", () => {
     const noLoginUrlSchema: ClipSchema = {
       ...OAUTH_SCHEMA,
       auth: {
-        type: "oauth",
+        type: "browser-login",
         tokenParam: "api_key",
         loginPath: "/api/auth/cli",
         headerName: "Authorization",
@@ -509,7 +509,7 @@ describe("generateCli — OAuth schemas", () => {
       },
     };
 
-    const outputDir = join(tempDir, "oauth-no-login-url");
+    const outputDir = join(tempDir, "browser-login-no-login-url");
     await generateCli(noLoginUrlSchema, outputDir);
 
     const loginContent = await readFile(

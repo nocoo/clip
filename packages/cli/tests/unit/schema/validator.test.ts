@@ -181,13 +181,13 @@ describe("ClipSchemaZod", () => {
       ).toThrow(ZodError);
     });
 
-    describe("oauth", () => {
-      it("validates a minimal oauth auth and applies defaults", () => {
+    describe("browser-login", () => {
+      it("validates a minimal browser-login auth and applies defaults", () => {
         const result = ClipSchemaZod.parse(
-          validSchema({ auth: { type: "oauth" } }),
+          validSchema({ auth: { type: "browser-login" } }),
         );
-        expect(result.auth.type).toBe("oauth");
-        if (result.auth.type === "oauth") {
+        expect(result.auth.type).toBe("browser-login");
+        if (result.auth.type === "browser-login") {
           expect(result.auth.tokenParam).toBe("api_key");
           expect(result.auth.loginPath).toBe("/api/auth/cli");
           expect(result.auth.headerName).toBe("Authorization");
@@ -196,11 +196,11 @@ describe("ClipSchemaZod", () => {
         }
       });
 
-      it("validates a full oauth auth with all fields set", () => {
+      it("validates a full browser-login auth with all fields set", () => {
         const result = ClipSchemaZod.parse(
           validSchema({
             auth: {
-              type: "oauth",
+              type: "browser-login",
               loginUrl: "https://example.com/api/auth/cli",
               tokenParam: "token",
               loginPath: "/login",
@@ -209,7 +209,7 @@ describe("ClipSchemaZod", () => {
             },
           }),
         );
-        if (result.auth.type === "oauth") {
+        if (result.auth.type === "browser-login") {
           expect(result.auth.loginUrl).toBe("https://example.com/api/auth/cli");
           expect(result.auth.tokenParam).toBe("token");
           expect(result.auth.loginPath).toBe("/login");
@@ -221,7 +221,9 @@ describe("ClipSchemaZod", () => {
       it("rejects invalid loginUrl", () => {
         expect(() =>
           ClipSchemaZod.parse(
-            validSchema({ auth: { type: "oauth", loginUrl: "not-a-url" } }),
+            validSchema({
+              auth: { type: "browser-login", loginUrl: "not-a-url" },
+            }),
           ),
         ).toThrow(ZodError);
       });
@@ -229,24 +231,26 @@ describe("ClipSchemaZod", () => {
       it("rejects loginPath not starting with /", () => {
         expect(() =>
           ClipSchemaZod.parse(
-            validSchema({ auth: { type: "oauth", loginPath: "api/auth" } }),
+            validSchema({
+              auth: { type: "browser-login", loginPath: "api/auth" },
+            }),
           ),
         ).toThrow(ZodError);
       });
 
-      it("rejects empty headerName for oauth", () => {
+      it("rejects empty headerName for browser-login", () => {
         expect(() =>
           ClipSchemaZod.parse(
-            validSchema({ auth: { type: "oauth", headerName: "" } }),
+            validSchema({ auth: { type: "browser-login", headerName: "" } }),
           ),
         ).toThrow(ZodError);
       });
 
       it("allows empty headerPrefix for tokens without prefix", () => {
         const result = ClipSchemaZod.parse(
-          validSchema({ auth: { type: "oauth", headerPrefix: "" } }),
+          validSchema({ auth: { type: "browser-login", headerPrefix: "" } }),
         );
-        if (result.auth.type === "oauth") {
+        if (result.auth.type === "browser-login") {
           expect(result.auth.headerPrefix).toBe("");
         }
       });
@@ -623,15 +627,17 @@ describe("validateSemantics", () => {
     expect(errors.length).toBeGreaterThanOrEqual(4);
   });
 
-  describe("OAuth reserved endpoint names", () => {
-    function makeOAuthSchema(endpoints: ClipSchema["endpoints"]): ClipSchema {
+  describe("browser-login reserved endpoint names", () => {
+    function makebrowserLoginSchema(
+      endpoints: ClipSchema["endpoints"],
+    ): ClipSchema {
       return {
-        name: "OAuth API",
+        name: "browser-login API",
         alias: "oapi",
         version: "1.0.0",
         baseUrl: "https://api.example.com",
         auth: {
-          type: "oauth",
+          type: "browser-login",
           tokenParam: "api_key",
           loginPath: "/api/auth/cli",
           headerName: "Authorization",
@@ -641,8 +647,8 @@ describe("validateSemantics", () => {
       };
     }
 
-    it("rejects endpoint named 'login' for OAuth schemas", () => {
-      const schema = makeOAuthSchema([
+    it("rejects endpoint named 'login' for browser-login schemas", () => {
+      const schema = makebrowserLoginSchema([
         {
           name: "login",
           method: "POST",
@@ -655,8 +661,8 @@ describe("validateSemantics", () => {
       expect(errors.some((e) => e.message.includes('"login"'))).toBe(true);
     });
 
-    it("rejects endpoint named 'logout' for OAuth schemas", () => {
-      const schema = makeOAuthSchema([
+    it("rejects endpoint named 'logout' for browser-login schemas", () => {
+      const schema = makebrowserLoginSchema([
         {
           name: "logout",
           method: "POST",

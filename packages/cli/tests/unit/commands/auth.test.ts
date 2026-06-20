@@ -151,11 +151,11 @@ describe("authShow", () => {
     expect(output).not.toContain("sk-abcdef123456");
   });
 
-  it("displays OAuth credentials without email or expiry", async () => {
+  it("displays browser-login credentials without email or expiry", async () => {
     const { authShow } = await import("../../../src/commands/auth");
 
-    await storage.saveCredentials("oauth-bare", {
-      type: "oauth",
+    await storage.saveCredentials("browser-login-bare", {
+      type: "browser-login",
       token: "bare-token-1234567890",
     });
 
@@ -163,23 +163,23 @@ describe("authShow", () => {
     const originalLog = console.log;
     console.log = logMock;
 
-    await authShow("oauth-bare");
+    await authShow("browser-login-bare");
 
     console.log = originalLog;
 
     const output = logMock.mock.calls.map((c: string[]) => c[0]).join("\n");
-    expect(output).toContain("oauth");
+    expect(output).toContain("browser-login");
     expect(output).not.toContain("Email:");
     expect(output).not.toContain("Expires:");
     expect(output).toContain("****");
   });
 
-  it("displays OAuth credentials with email and expiry", async () => {
+  it("displays browser-login credentials with email and expiry", async () => {
     const { authShow } = await import("../../../src/commands/auth");
 
-    await storage.saveCredentials("oauth-show", {
-      type: "oauth",
-      token: "oauth-token-1234567890",
+    await storage.saveCredentials("browser-login-show", {
+      type: "browser-login",
+      token: "browser-login-token-1234567890",
       email: "user@example.com",
       expiresAt: "2099-01-01T00:00:00Z",
     });
@@ -188,16 +188,16 @@ describe("authShow", () => {
     const originalLog = console.log;
     console.log = logMock;
 
-    await authShow("oauth-show");
+    await authShow("browser-login-show");
 
     console.log = originalLog;
 
     const output = logMock.mock.calls.map((c: string[]) => c[0]).join("\n");
-    expect(output).toContain("oauth");
+    expect(output).toContain("browser-login");
     expect(output).toContain("user@example.com");
     expect(output).toContain("2099-01-01");
     expect(output).toContain("****");
-    expect(output).not.toContain("oauth-token-1234567890");
+    expect(output).not.toContain("browser-login-token-1234567890");
   });
 
   it("displays cf-access credentials with both client id and secret masked", async () => {
@@ -295,13 +295,13 @@ describe("authRemove", () => {
 });
 
 describe("authLogin", () => {
-  const oauthSchema = {
+  const browserLoginSchema = {
     name: "Test",
-    alias: "test-oauth",
+    alias: "test-browser-login",
     version: "1.0.0",
     baseUrl: "https://example.com",
     auth: {
-      type: "oauth" as const,
+      type: "browser-login" as const,
       tokenParam: "api_key",
       loginPath: "/api/auth/cli",
       headerName: "Authorization",
@@ -317,19 +317,19 @@ describe("authLogin", () => {
     ],
   };
 
-  it("saves OAuth credentials when login succeeds", async () => {
+  it("saves browser-login credentials when login succeeds", async () => {
     const { authLogin } = await import("../../../src/commands/auth");
 
     const performLogin = mock(
       async (deps: { onSaveToken: (t: string) => void }) => {
-        deps.onSaveToken("oauth-token-xyz");
+        deps.onSaveToken("browser-login-token-xyz");
         return { success: true, email: "user@example.com" };
       },
     );
     const openBrowser = mock(async () => {});
 
     await authLogin("login-success", {
-      parseSchema: async () => oauthSchema,
+      parseSchema: async () => browserLoginSchema,
       // biome-ignore lint/suspicious/noExplicitAny: test mock typing
       performLogin: performLogin as any,
       openBrowser,
@@ -338,8 +338,8 @@ describe("authLogin", () => {
     expect(performLogin).toHaveBeenCalled();
     const creds = await storage.loadCredentials("login-success");
     expect(creds).toEqual({
-      type: "oauth",
-      token: "oauth-token-xyz",
+      type: "browser-login",
+      token: "browser-login-token-xyz",
       email: "user@example.com",
     });
   });
@@ -364,7 +364,7 @@ describe("authLogin", () => {
 
     try {
       await authLogin("login-fail", {
-        parseSchema: async () => oauthSchema,
+        parseSchema: async () => browserLoginSchema,
         // biome-ignore lint/suspicious/noExplicitAny: test mock typing
         performLogin: performLogin as any,
         openBrowser: mock(async () => {}),
@@ -395,7 +395,7 @@ describe("authLogin", () => {
 
     try {
       await authLogin("login-no-msg", {
-        parseSchema: async () => oauthSchema,
+        parseSchema: async () => browserLoginSchema,
         // biome-ignore lint/suspicious/noExplicitAny: test mock typing
         performLogin: mock(async () => ({ success: false })) as any,
         openBrowser: mock(async () => {}),
@@ -426,7 +426,7 @@ describe("authLogin", () => {
     try {
       await authLogin("wrong-type", {
         parseSchema: async () => ({
-          ...oauthSchema,
+          ...browserLoginSchema,
           auth: { type: "header" as const, headerName: "X-API-Key" },
         }),
         performLogin: mock(async () => ({ success: true })) as never,
@@ -462,9 +462,9 @@ describe("authLogin", () => {
 
     await authLogin("login-url", {
       parseSchema: async () => ({
-        ...oauthSchema,
+        ...browserLoginSchema,
         auth: {
-          ...oauthSchema.auth,
+          ...browserLoginSchema.auth,
           loginUrl: "https://saas.example.org/custom/login",
         },
       }),
@@ -497,7 +497,7 @@ describe("authLogin", () => {
     );
 
     await authLogin("plain-login", {
-      parseSchema: async () => oauthSchema,
+      parseSchema: async () => browserLoginSchema,
       // biome-ignore lint/suspicious/noExplicitAny: test mock typing
       performLogin: performLogin as any,
       openBrowser: mock(async () => {}),
@@ -542,27 +542,29 @@ describe("authLogin", () => {
   });
 });
 
-describe("authSet — OAuth schema rejection", () => {
-  it("rejects when clip.yaml declares OAuth auth and no --header is given", async () => {
+describe("authSet — browser-login schema rejection", () => {
+  it("rejects when clip.yaml declares browser-login auth and no --header is given", async () => {
     const { authSet } = await import("../../../src/commands/auth");
 
-    // Write an OAuth clip.yaml in cwd so authSet's parser finds it
+    // Write an browser-login clip.yaml in cwd so authSet's parser finds it
     const {
       writeFile,
       mkdtemp: _mkdtemp,
       rm: _rm,
     } = await import("node:fs/promises");
-    const oauthDir = await _mkdtemp(join(tmpdir(), "clip-oauth-yaml-"));
-    const yamlPath = join(oauthDir, "clip.yaml");
+    const browserLoginDir = await _mkdtemp(
+      join(tmpdir(), "clip-browser-login-yaml-"),
+    );
+    const yamlPath = join(browserLoginDir, "clip.yaml");
     await writeFile(
       yamlPath,
       [
-        'name: "OAuth API"',
-        "alias: oauth-api",
+        'name: "browser-login API"',
+        "alias: browser-login-api",
         'version: "1.0.0"',
         'baseUrl: "https://example.com"',
         "auth:",
-        "  type: oauth",
+        "  type: browser-login",
         "  tokenParam: api_key",
         '  loginPath: "/api/auth/cli"',
         '  headerName: "Authorization"',
@@ -576,7 +578,7 @@ describe("authSet — OAuth schema rejection", () => {
     );
 
     const originalCwd = process.cwd();
-    process.chdir(oauthDir);
+    process.chdir(browserLoginDir);
 
     const exitMock = mock(() => {
       throw new Error("process.exit called");
@@ -589,18 +591,18 @@ describe("authSet — OAuth schema rejection", () => {
     console.error = errorMock;
 
     try {
-      await authSet("rejects-oauth", { key: "irrelevant" });
+      await authSet("rejects-browser-login", { key: "irrelevant" });
     } catch {
       // expected — exit mock throws
     } finally {
       process.chdir(originalCwd);
       process.exit = originalExit;
       console.error = originalError;
-      await _rm(oauthDir, { recursive: true, force: true });
+      await _rm(browserLoginDir, { recursive: true, force: true });
     }
 
     expect(exitMock).toHaveBeenCalledWith(1);
-    expect(errorMock.mock.calls[0][0]).toContain("OAuth");
+    expect(errorMock.mock.calls[0][0]).toContain("browser-login");
   });
 });
 
