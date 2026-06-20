@@ -15,6 +15,7 @@ jobs:
       lint-command: "bun run lint"
       typecheck-command: "bun run typecheck"
       enable-security: "true"
-      enable-l2: "false"
+      enable-l2: "true"
+      l2-command: "bun run test:e2e"
       ignore-scripts: true
     secrets: inherit

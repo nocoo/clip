@@ -1,8 +1,21 @@
 #!/bin/bash
 set -e
 echo "🔍 Running pre-push checks..."
-# G2 — Security scanning
-gitleaks detect --source . --verbose || true
-# osv-scanner may not be installed everywhere, soft-fail
-osv-scanner --lockfile bun.lock 2>/dev/null || true
+
+# L2 — End-to-end behavior proofs (real spawn, real HTTP)
+bun run test:e2e
+
+# G2 — Security scanning (hard-fail; bypassing is the wrong incentive)
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "❌ gitleaks not installed. Install via: brew install gitleaks" >&2
+  exit 1
+fi
+gitleaks detect --source . --verbose
+
+if ! command -v osv-scanner >/dev/null 2>&1; then
+  echo "❌ osv-scanner not installed. Install via: brew install osv-scanner" >&2
+  exit 1
+fi
+osv-scanner --lockfile bun.lock
+
 echo "✅ Pre-push checks passed"
