@@ -137,8 +137,9 @@ export { store };
 /* v8 ignore start -- only executed when run directly */
 if (import.meta.main) {
   const port = Number(process.env.PORT ?? "3100");
+  const loginToken = process.env.DEMO_LOGIN_TOKEN;
   store.reset();
-  const app = createApp();
+  const app = createApp(loginToken ? { loginToken } : undefined);
   process.stdout.write(`demo-app listening on http://localhost:${port}\n`);
   Bun.serve({ port, fetch: app.fetch });
 }

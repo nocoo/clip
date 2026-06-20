@@ -10,7 +10,9 @@
     "lint": "biome check . --error-on-warnings",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run --coverage",
+    "test:e2e": "bun run scripts/run-e2e.ts",
     "test:integration": "echo 'No integration tests yet'",
+    "quality:full": "bun run lint && bun run typecheck && bun run test:unit && bun run test:e2e && bun run lint:secrets && bun run lint:deps",
     "lint:secrets": "gitleaks detect --source . --verbose",
     "lint:deps": "osv-scanner --lockfile bun.lock",
     "prepare": "git config core.hooksPath scripts/hooks"
