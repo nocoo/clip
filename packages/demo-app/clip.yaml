@@ -1,0 +1,81 @@
+name: "Bookmarks API"
+alias: bookmarks
+version: "1.0.0"
+baseUrl: "http://localhost:3100"
+auth:
+  type: browser-login
+  loginPath: /api/auth/cli
+  tokenParam: api_key
+  headerName: Authorization
+  headerPrefix: Bearer
+endpoints:
+  - name: health
+    method: GET
+    path: /health
+    description: "Health check"
+
+  - name: me
+    method: GET
+    path: /api/me
+    description: "Show authenticated user"
+
+  - name: list
+    method: GET
+    path: /api/bookmarks
+    description: "List bookmarks"
+    params:
+      query:
+        tag: { type: string, description: "Filter by tag" }
+        archived: { type: boolean, description: "Only archived?" }
+        limit: { type: number, description: "Max items to return" }
+
+  - name: get
+    method: GET
+    path: "/api/bookmarks/:id"
+    description: "Get a bookmark by id"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: create
+    method: POST
+    path: /api/bookmarks
+    description: "Create a bookmark"
+    params:
+      body:
+        url: { type: string, required: true }
+        title: { type: string, required: true }
+        notes: { type: string }
+
+  - name: update
+    method: PATCH
+    path: "/api/bookmarks/:id"
+    description: "Update a bookmark"
+    params:
+      path:
+        id: { type: string, required: true }
+      body:
+        url: { type: string }
+        title: { type: string }
+        notes: { type: string }
+
+  - name: delete
+    method: DELETE
+    path: "/api/bookmarks/:id"
+    description: "Delete a bookmark"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: archive
+    method: POST
+    path: "/api/bookmarks/:id/archive"
+    description: "Archive a bookmark"
+    params:
+      path:
+        id: { type: string, required: true }
+
+  - name: tags
+    method: GET
+    path: /api/tags
+    description: "List distinct tags"

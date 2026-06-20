@@ -1,0 +1,16 @@
+{
+  "name": "@clip/demo-app",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "test:unit": "vitest run --coverage"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "hono": "4.12.26"
+  }
+}
