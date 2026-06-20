@@ -178,4 +178,4 @@ bun run lint:deps    # osv-scanner 依赖漏洞扫描
 
 ## License
 
-Private — All rights reserved.
+[MIT](LICENSE) © 2026 Zheng Li

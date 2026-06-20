@@ -2,6 +2,7 @@
   "name": "clip",
   "private": true,
   "version": "0.0.2",
+  "license": "MIT",
   "workspaces": [
     "packages/*"
   ],
