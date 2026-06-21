@@ -23,6 +23,11 @@ export interface DemoAppHandle {
 
 /**
  * Boot demo-app on a random port. Resolves once the server answers /health.
+ *
+ * If readiness fails (bad port bind, server boot regression, /health
+ * regression), kills the spawned process and includes captured stderr/stdout
+ * in the thrown error — exactly the failure modes the harness is meant to
+ * harden against.
  */
 export async function startDemoApp(
   opts: { loginToken?: string } = {},
@@ -42,7 +47,21 @@ export async function startDemoApp(
   });
 
   const baseUrl = `http://localhost:${port}`;
-  await waitForHealth(baseUrl, 5000);
+  try {
+    await waitForHealth(baseUrl, 5000);
+  } catch (err) {
+    // Kill the child, drain its streams, and re-throw with diagnostics.
+    proc.kill("SIGKILL");
+    const [stdout, stderr] = await Promise.all([
+      new Response(proc.stdout).text().catch(() => ""),
+      new Response(proc.stderr).text().catch(() => ""),
+    ]);
+    await proc.exited;
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `startDemoApp failed: ${reason}\n--- demo-app stdout ---\n${stdout}\n--- demo-app stderr ---\n${stderr}`,
+    );
+  }
 
   return {
     port,
@@ -102,16 +121,66 @@ export async function makeTempClipHome(): Promise<{
   };
 }
 
+export interface RunProcessResult {
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+/**
+ * Spawn a command, drain stdout/stderr concurrently with proc.exited, and
+ * enforce an optional timeout. Returning all three streams at once avoids
+ * the classic pipe-buffer deadlock where the child blocks on a full pipe
+ * because the parent only reads stderr after .exited resolves.
+ */
+async function runProcess(
+  cmd: string[],
+  opts: { env?: Record<string, string>; timeoutMs?: number } = {},
+): Promise<RunProcessResult> {
+  const proc = spawn({
+    cmd,
+    env: { ...process.env, ...(opts.env ?? {}) },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  if (opts.timeoutMs !== undefined) {
+    timer = setTimeout(() => {
+      timedOut = true;
+      proc.kill("SIGKILL");
+    }, opts.timeoutMs);
+  }
+
+  try {
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    if (timedOut) {
+      throw new Error(
+        `process timed out after ${opts.timeoutMs}ms: ${cmd.join(" ")}\n--- stdout ---\n${stdout}\n--- stderr ---\n${stderr}`,
+      );
+    }
+    return { code, stdout, stderr };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Run `clip generate` on a yaml at `schemaPath`, writing output to a temp dir.
- * Returns the absolute output dir (containing src/index.ts).
+ * Streams both stdout and stderr in error messages so a failed generate is
+ * actually diagnosable.
  */
 export async function runGenerate(
   schemaPath: string,
   outputDir: string,
 ): Promise<void> {
-  const proc = spawn({
-    cmd: [
+  const r = await runProcess(
+    [
       "bun",
       "run",
       "packages/cli/src/index.ts",
@@ -120,22 +189,16 @@ export async function runGenerate(
       "--output",
       outputDir,
     ],
-    env: { ...process.env },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const code = await proc.exited;
-  if (code !== 0) {
-    const stderr = await new Response(proc.stderr).text();
-    throw new Error(`clip generate failed (exit ${code}): ${stderr}`);
+    { timeoutMs: 30_000 },
+  );
+  if (r.code !== 0) {
+    throw new Error(
+      `clip generate failed (exit ${r.code})\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}`,
+    );
   }
 }
 
-export interface RunGeneratedResult {
-  code: number;
-  stdout: string;
-  stderr: string;
-}
+export type RunGeneratedResult = RunProcessResult;
 
 /**
  * Exec the generated CLI's index.ts with args, returning code + captured streams.
@@ -145,18 +208,10 @@ export async function runGenerated(
   args: string[],
   env: Record<string, string>,
 ): Promise<RunGeneratedResult> {
-  const proc = spawn({
-    cmd: ["bun", "run", join(generatedDir, "src", "index.ts"), ...args],
-    env: { ...process.env, ...env },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { code, stdout, stderr };
+  return runProcess(
+    ["bun", "run", join(generatedDir, "src", "index.ts"), ...args],
+    { env, timeoutMs: 30_000 },
+  );
 }
 
 /**

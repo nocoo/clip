@@ -27,15 +27,19 @@ import {
 const ALIAS = "bookmarks";
 const LOGIN_TOKEN = "browser-login-token-789";
 
-let demo: DemoAppHandle;
-let workDir: string;
-let generatedDir: string;
-let clipHomeDir: string;
-let cleanupHome: () => Promise<void>;
+let demo: DemoAppHandle | undefined;
+let workDir: string | undefined;
+let generatedDir: string | undefined;
+let clipHomeDir: string | undefined;
+let cleanupHome: (() => Promise<void>) | undefined;
 let originalCwd: string;
 let originalClipHome: string | undefined;
+let cwdChanged = false;
 
 beforeAll(async () => {
+  originalCwd = process.cwd();
+  originalClipHome = process.env.CLIP_HOME;
+
   demo = await startDemoApp({ loginToken: LOGIN_TOKEN });
 
   workDir = await mkdtemp(join(tmpdir(), "clip-e2e-bl-work-"));
@@ -55,23 +59,24 @@ beforeAll(async () => {
   clipHomeDir = home.path;
   cleanupHome = home.cleanup;
 
-  originalCwd = process.cwd();
-  originalClipHome = process.env.CLIP_HOME;
   process.env.CLIP_HOME = clipHomeDir;
   process.chdir(workDir);
+  cwdChanged = true;
 }, 30_000);
 
 afterAll(async () => {
-  process.chdir(originalCwd);
+  if (cwdChanged) process.chdir(originalCwd);
   if (originalClipHome === undefined) {
     delete process.env.CLIP_HOME;
   } else {
     process.env.CLIP_HOME = originalClipHome;
   }
-  await demo.stop();
-  await cleanupHome();
-  await rm(generatedDir, { recursive: true, force: true });
-  await rm(workDir, { recursive: true, force: true });
+  if (demo) await demo.stop().catch(() => {});
+  if (cleanupHome) await cleanupHome().catch(() => {});
+  if (generatedDir)
+    await rm(generatedDir, { recursive: true, force: true }).catch(() => {});
+  if (workDir)
+    await rm(workDir, { recursive: true, force: true }).catch(() => {});
 });
 
 describe("e2e: browser-login full round trip", () => {
@@ -103,7 +108,7 @@ describe("e2e: browser-login full round trip", () => {
       timeoutMs: 5_000,
     });
 
-    const credPath = join(clipHomeDir, ALIAS, "credentials.json");
+    const credPath = join(clipHomeDir as string, ALIAS, "credentials.json");
     const raw = await readFile(credPath, "utf-8");
     const creds = JSON.parse(raw);
     expect(creds.type).toBe("browser-login");
@@ -113,14 +118,14 @@ describe("e2e: browser-login full round trip", () => {
     const st = await stat(credPath);
     expect(st.mode & 0o777).toBe(0o600);
 
-    const dirSt = await stat(join(clipHomeDir, ALIAS));
+    const dirSt = await stat(join(clipHomeDir as string, ALIAS));
     expect(dirSt.mode & 0o777).toBe(0o700);
   });
 
   it("generated CLI uses the saved token on subsequent requests", async () => {
-    const r = await runGenerated(generatedDir, ["me"], {
-      CLIP_HOME: clipHomeDir,
-      CLIP_BASE_URL: demo.baseUrl,
+    const r = await runGenerated(generatedDir as string, ["me"], {
+      CLIP_HOME: clipHomeDir as string,
+      CLIP_BASE_URL: (demo as DemoAppHandle).baseUrl,
     });
     expect(r.code).toBe(0);
     const body = JSON.parse(r.stdout) as { token: string; email: string };

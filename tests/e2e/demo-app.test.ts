@@ -19,17 +19,18 @@ import {
 const ALIAS = "bookmarks";
 const TOKEN = "e2e-token-123";
 
-let demo: DemoAppHandle;
-let generatedDir: string;
-let clipHomeDir: string;
-let cleanupHome: () => Promise<void>;
+let demo: DemoAppHandle | undefined;
+let generatedDir: string | undefined;
+let clipHomeDir: string | undefined;
+let cleanupHome: (() => Promise<void>) | undefined;
 let bookmarksSchemaPath: string;
+let tmpSchemaDir: string | undefined;
 
 beforeAll(async () => {
   demo = await startDemoApp({ loginToken: TOKEN });
 
   // Write a clip.yaml pointed at the running demo-app's random port.
-  const tmpSchemaDir = await mkdtemp(join(tmpdir(), "clip-e2e-schema-"));
+  tmpSchemaDir = await mkdtemp(join(tmpdir(), "clip-e2e-schema-"));
   bookmarksSchemaPath = join(tmpSchemaDir, "clip.yaml");
   const baseYaml = await Bun.file("packages/demo-app/clip.yaml").text();
   await writeFile(
@@ -54,12 +55,17 @@ beforeAll(async () => {
 }, 30_000);
 
 afterAll(async () => {
-  await demo.stop();
-  await cleanupHome();
-  await rm(generatedDir, { recursive: true, force: true });
+  // Each step is guarded so a partial beforeAll failure still drains the rest.
+  if (demo) await demo.stop().catch(() => {});
+  if (cleanupHome) await cleanupHome().catch(() => {});
+  if (generatedDir)
+    await rm(generatedDir, { recursive: true, force: true }).catch(() => {});
+  if (tmpSchemaDir)
+    await rm(tmpSchemaDir, { recursive: true, force: true }).catch(() => {});
 });
 
 function envForGenerated(): Record<string, string> {
+  if (!clipHomeDir || !demo) throw new Error("e2e harness not initialized");
   return { CLIP_HOME: clipHomeDir, CLIP_BASE_URL: demo.baseUrl };
 }
 
