@@ -22,7 +22,7 @@ import {
   runGenerate,
   runGenerated,
   startDemoApp,
-} from "./harness";
+} from "./support";
 
 const ALIAS = "bookmarks";
 const LOGIN_TOKEN = "browser-login-token-789";

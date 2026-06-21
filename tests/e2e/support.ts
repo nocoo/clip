@@ -1,6 +1,6 @@
 /**
- * E2E harness helpers — boot the demo-app on a random port, run the clip CLI,
- * exec the generated CLI, and clean up after each test.
+ * Shared support for E2E tests — boot the demo-app on a random port,
+ * run the clip CLI, exec the generated CLI, and clean up after each test.
  *
  * These are real-process tests: nothing is mocked. Tests prove that
  *   clip generate → install-free `bun run <generated>/src/index.ts <cmd>`
@@ -26,8 +26,8 @@ export interface DemoAppHandle {
  *
  * If readiness fails (bad port bind, server boot regression, /health
  * regression), kills the spawned process and includes captured stderr/stdout
- * in the thrown error — exactly the failure modes the harness is meant to
- * harden against.
+ * in the thrown error — exactly the failure modes this helper exists to
+ * surface clearly instead of timing out at the test layer.
  */
 export async function startDemoApp(
   opts: { loginToken?: string } = {},

@@ -34,7 +34,7 @@ clip 只解决两个问题:
 
 **任何 PR 必须先过 `bun run quality:full`** —— 这一条命令跑完整六维。
 
-## Harness 自动化规则(AI 代理必须遵守)
+## 自动化质量门(AI 代理必须遵守)
 
 ### 改动前
 
@@ -102,10 +102,10 @@ Bun runner 才能 `import { spawn } from "bun"`。
 clip/
 ├── packages/
 │   ├── cli/          # 核心:schema/codegen/auth/commands
-│   ├── example-api/  # 原始 Hono Todo(integration 测试 fixture)
-│   ├── demo-app/     # 复杂 Bookmarks API(L2 e2e fixture,browser-login + 9 endpoints)
+│   ├── example-api/  # 原始 Hono Todo(单元测试的小型目标 API)
+│   ├── demo-app/     # 复杂 Bookmarks API(L2 端到端测试目标,browser-login + 9 endpoints)
 │   └── web/          # Astro 文档站
-├── tests/e2e/        # L2 真 spawn 进程证明测试(bun test runner)
+├── tests/e2e/        # L2 端到端测试(bun test runner;真 spawn 进程 + 真 HTTP)
 ├── scripts/
 │   ├── hooks/        # pre-commit (L1+G1)、pre-push (L2+G2 硬失败)
 │   └── run-e2e.ts    # L2 入口,被 pre-push 和 CI 调用

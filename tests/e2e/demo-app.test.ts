@@ -14,7 +14,7 @@ import {
   runGenerated,
   seedCredentials,
   startDemoApp,
-} from "./harness";
+} from "./support";
 
 const ALIAS = "bookmarks";
 const TOKEN = "e2e-token-123";
@@ -65,7 +65,7 @@ afterAll(async () => {
 });
 
 function envForGenerated(): Record<string, string> {
-  if (!clipHomeDir || !demo) throw new Error("e2e harness not initialized");
+  if (!clipHomeDir || !demo) throw new Error("e2e setup did not complete");
   return { CLIP_HOME: clipHomeDir, CLIP_BASE_URL: demo.baseUrl };
 }
 
