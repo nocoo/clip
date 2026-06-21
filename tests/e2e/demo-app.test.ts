@@ -10,6 +10,8 @@ import { join } from "node:path";
 import {
   type DemoAppHandle,
   makeTempClipHome,
+  requireSetup,
+  runCleanups,
   runGenerate,
   runGenerated,
   seedCredentials,
@@ -23,7 +25,6 @@ let demo: DemoAppHandle | undefined;
 let generatedDir: string | undefined;
 let clipHomeDir: string | undefined;
 let cleanupHome: (() => Promise<void>) | undefined;
-let bookmarksSchemaPath: string;
 let tmpSchemaDir: string | undefined;
 
 beforeAll(async () => {
@@ -31,7 +32,7 @@ beforeAll(async () => {
 
   // Write a clip.yaml pointed at the running demo-app's random port.
   tmpSchemaDir = await mkdtemp(join(tmpdir(), "clip-e2e-schema-"));
-  bookmarksSchemaPath = join(tmpSchemaDir, "clip.yaml");
+  const bookmarksSchemaPath = join(tmpSchemaDir, "clip.yaml");
   const baseYaml = await Bun.file("packages/demo-app/clip.yaml").text();
   await writeFile(
     bookmarksSchemaPath,
@@ -55,22 +56,44 @@ beforeAll(async () => {
 }, 30_000);
 
 afterAll(async () => {
-  // Each step is guarded so a partial beforeAll failure still drains the rest.
-  if (demo) await demo.stop().catch(() => {});
-  if (cleanupHome) await cleanupHome().catch(() => {});
-  if (generatedDir)
-    await rm(generatedDir, { recursive: true, force: true }).catch(() => {});
-  if (tmpSchemaDir)
-    await rm(tmpSchemaDir, { recursive: true, force: true }).catch(() => {});
+  await runCleanups([
+    { name: "stop demo-app", fn: async () => demo?.stop() },
+    { name: "remove CLIP_HOME", fn: async () => cleanupHome?.() },
+    {
+      name: "remove generated dir",
+      fn: async () => {
+        if (generatedDir)
+          await rm(generatedDir, { recursive: true, force: true });
+      },
+    },
+    {
+      name: "remove tmp schema dir",
+      fn: async () => {
+        if (tmpSchemaDir)
+          await rm(tmpSchemaDir, { recursive: true, force: true });
+      },
+    },
+  ]);
 });
 
+function getGenDir(): string {
+  return requireSetup(generatedDir, "generatedDir");
+}
+
+function getDemoBaseUrl(): string {
+  return requireSetup(demo, "demo").baseUrl;
+}
+
 function envForGenerated(): Record<string, string> {
-  if (!clipHomeDir || !demo) throw new Error("e2e setup did not complete");
-  return { CLIP_HOME: clipHomeDir, CLIP_BASE_URL: demo.baseUrl };
+  return {
+    CLIP_HOME: requireSetup(clipHomeDir, "clipHomeDir"),
+    CLIP_BASE_URL: getDemoBaseUrl(),
+  };
 }
 
 describe("e2e: clip generate → generated CLI hits demo-app", () => {
   it("generates a directory with the expected files", async () => {
+    const dir = getGenDir();
     const files = await Promise.all(
       [
         "src/index.ts",
@@ -88,13 +111,13 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
         "src/commands/_login.ts",
         "package.json",
         "tsconfig.json",
-      ].map((p) => Bun.file(join(generatedDir, p)).exists()),
+      ].map((p) => Bun.file(join(dir, p)).exists()),
     );
     expect(files.every(Boolean)).toBe(true);
   });
 
   it("--help lists every endpoint command + the login subcommand", async () => {
-    const r = await runGenerated(generatedDir, ["--help"], envForGenerated());
+    const r = await runGenerated(getGenDir(), ["--help"], envForGenerated());
     expect(r.code).toBe(0);
     for (const name of [
       "health",
@@ -113,16 +136,16 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
   });
 
   it("list returns seeded bookmarks as JSON", async () => {
-    const r = await runGenerated(generatedDir, ["list"], envForGenerated());
+    const r = await runGenerated(getGenDir(), ["list"], envForGenerated());
     expect(r.code).toBe(0);
-    const body = JSON.parse(r.stdout);
+    const body = JSON.parse(r.stdout) as Array<{ id: string; title: string }>;
     expect(body).toHaveLength(3);
     expect(body[0]).toMatchObject({ id: "bm_1", title: "Bun" });
   });
 
   it("list passes query params through to the server (--tag, --archived, --limit)", async () => {
     const r = await runGenerated(
-      generatedDir,
+      getGenDir(),
       ["list", "--tag", "js", "--archived", "false", "--limit", "1"],
       envForGenerated(),
     );
@@ -134,7 +157,7 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
 
   it("get <id> reads the path param and returns one bookmark", async () => {
     const r = await runGenerated(
-      generatedDir,
+      getGenDir(),
       ["get", "bm_2"],
       envForGenerated(),
     );
@@ -144,7 +167,7 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
 
   it("create POSTs a JSON body the server accepts", async () => {
     const r = await runGenerated(
-      generatedDir,
+      getGenDir(),
       [
         "create",
         "--url",
@@ -157,7 +180,12 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
       envForGenerated(),
     );
     expect(r.code).toBe(0);
-    const body = JSON.parse(r.stdout);
+    const body = JSON.parse(r.stdout) as {
+      id: string;
+      url: string;
+      title: string;
+      notes: string;
+    };
     expect(body).toMatchObject({
       url: "https://e2e.example",
       title: "E2E created",
@@ -168,49 +196,42 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
 
   it("update <id> PATCHes only the provided fields", async () => {
     const r = await runGenerated(
-      generatedDir,
+      getGenDir(),
       ["update", "bm_1", "--title", "Bun (updated)"],
       envForGenerated(),
     );
     expect(r.code).toBe(0);
-    const body = JSON.parse(r.stdout);
+    const body = JSON.parse(r.stdout) as { title: string; url: string };
     expect(body.title).toBe("Bun (updated)");
     expect(body.url).toBe("https://bun.sh");
   });
 
   it("archive <id> POSTs to the archive subroute", async () => {
     const r = await runGenerated(
-      generatedDir,
+      getGenDir(),
       ["archive", "bm_2"],
       envForGenerated(),
     );
     expect(r.code).toBe(0);
-    const body = JSON.parse(r.stdout);
+    const body = JSON.parse(r.stdout) as { archived: boolean };
     expect(body.archived).toBe(true);
   });
 
   it("delete <id> removes a bookmark and the server confirms", async () => {
-    // bm_3 starts as a tag-validation fixture; delete it now.
-    const r = await runGenerated(
-      generatedDir,
-      ["delete", "bm_3"],
-      envForGenerated(),
-    );
+    const dir = getGenDir();
+    const env = envForGenerated();
+    const r = await runGenerated(dir, ["delete", "bm_3"], env);
     expect(r.code).toBe(0);
     expect(JSON.parse(r.stdout)).toEqual({ deleted: true });
 
     // Verify by trying to fetch it back — should error with HTTP 404.
-    const after = await runGenerated(
-      generatedDir,
-      ["get", "bm_3"],
-      envForGenerated(),
-    );
+    const after = await runGenerated(dir, ["get", "bm_3"], env);
     expect(after.code).not.toBe(0);
     expect(after.stderr).toContain("HTTP 404");
   });
 
   it("tags returns the distinct sorted tag list", async () => {
-    const r = await runGenerated(generatedDir, ["tags"], envForGenerated());
+    const r = await runGenerated(getGenDir(), ["tags"], envForGenerated());
     expect(r.code).toBe(0);
     const tags = JSON.parse(r.stdout) as string[];
     expect(tags).toContain("js");
@@ -218,7 +239,7 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
   });
 
   it("me proves the generated CLI is sending Authorization: Bearer <token>", async () => {
-    const r = await runGenerated(generatedDir, ["me"], envForGenerated());
+    const r = await runGenerated(getGenDir(), ["me"], envForGenerated());
     expect(r.code).toBe(0);
     const body = JSON.parse(r.stdout) as { token: string; email: string };
     expect(body.token).toBe(TOKEN);
@@ -228,9 +249,9 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
   it("missing credentials → CLI exits non-zero with a clear hint", async () => {
     const emptyHome = await mkdtemp(join(tmpdir(), "clip-e2e-empty-home-"));
     try {
-      const r = await runGenerated(generatedDir, ["list"], {
+      const r = await runGenerated(getGenDir(), ["list"], {
         CLIP_HOME: emptyHome,
-        CLIP_BASE_URL: demo.baseUrl,
+        CLIP_BASE_URL: getDemoBaseUrl(),
       });
       expect(r.code).not.toBe(0);
       expect(r.stderr).toContain("No credentials found");
@@ -247,9 +268,9 @@ describe("e2e: clip generate → generated CLI hits demo-app", () => {
         type: "browser-login",
         token: "",
       });
-      const r = await runGenerated(generatedDir, ["me"], {
+      const r = await runGenerated(getGenDir(), ["me"], {
         CLIP_HOME: badHome,
-        CLIP_BASE_URL: demo.baseUrl,
+        CLIP_BASE_URL: getDemoBaseUrl(),
       });
       expect(r.code).not.toBe(0);
       expect(r.stderr).toContain("HTTP 401");

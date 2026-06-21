@@ -4,12 +4,12 @@ import { createApp, store } from "../../src/index";
 const TOKEN = "test-token-1";
 const AUTH = { Authorization: `Bearer ${TOKEN}` };
 
-function appReq(
+async function appReq(
   app: ReturnType<typeof createApp>,
   path: string,
   init?: RequestInit,
 ): Promise<Response> {
-  return app.fetch(new Request(`http://localhost${path}`, init));
+  return await app.fetch(new Request(`http://localhost${path}`, init));
 }
 
 describe("demo-app", () => {
@@ -294,6 +294,7 @@ describe("demo-app", () => {
         url: string;
         title: string;
         tags: string[];
+        notes: string | null;
       };
 
       const res = await appReq(app, "/api/bookmarks/bm_1", {

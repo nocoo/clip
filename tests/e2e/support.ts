@@ -81,8 +81,11 @@ export async function startDemoApp(
  */
 async function pickFreePort(): Promise<number> {
   const server = Bun.serve({ port: 0, fetch: () => new Response("ok") });
-  const port = server.port;
+  const { port } = server;
   server.stop(true);
+  if (port === undefined) {
+    throw new Error("Bun.serve did not assign a port");
+  }
   return port;
 }
 
@@ -239,4 +242,44 @@ export async function seedCredentials(
   const credPath = join(dir, "credentials.json");
   await writeFile(credPath, JSON.stringify(creds, null, 2));
   await chmod(credPath, 0o600);
+}
+
+/**
+ * Narrow a possibly-unset setup value, throwing a clear message if a test
+ * fired before `beforeAll` completed (typical when setup itself errored
+ * and the runner still attempted the tests).
+ */
+export function requireSetup<T>(value: T | undefined, label: string): T {
+  if (value === undefined) {
+    throw new Error(`e2e setup did not initialize ${label}`);
+  }
+  return value;
+}
+
+/**
+ * Drain a list of cleanup steps in order: every step runs even when an
+ * earlier one throws, and any captured errors are surfaced as a single
+ * aggregated error at the end. Using this in `afterAll` prevents silent
+ * masking of leaked processes or undeleted tmp dirs while still allowing
+ * a partial `beforeAll` failure to clean what it can.
+ */
+export async function runCleanups(
+  steps: Array<{ name: string; fn: () => Promise<unknown> }>,
+): Promise<void> {
+  const errors: Array<{ name: string; err: unknown }> = [];
+  for (const step of steps) {
+    try {
+      await step.fn();
+    } catch (err) {
+      errors.push({ name: step.name, err });
+    }
+  }
+  if (errors.length === 0) return;
+  const summary = errors
+    .map(({ name, err }) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      return `  - ${name}: ${msg}`;
+    })
+    .join("\n");
+  throw new Error(`e2e cleanup failed (${errors.length}):\n${summary}`);
 }
