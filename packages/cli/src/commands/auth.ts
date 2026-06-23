@@ -51,9 +51,13 @@ export async function authLogin(
   const browserLogin = schema.auth;
   // Resolve the apiUrl: either the absolute loginUrl, or the baseUrl
   // (loginPath is appended by performLogin via its `loginPath` option).
-  const apiUrl = browserLogin.loginUrl
+  // CLIP_BASE_URL overrides the resolved value so users of self-hosted
+  // deployments can redirect login without editing clip.yaml — matches
+  // the env override the generated client.ts already honours.
+  const resolvedApiUrl = browserLogin.loginUrl
     ? new URL(browserLogin.loginUrl).origin
     : schema.baseUrl;
+  const apiUrl = process.env.CLIP_BASE_URL ?? resolvedApiUrl;
   const loginPath = browserLogin.loginUrl
     ? new URL(browserLogin.loginUrl).pathname
     : browserLogin.loginPath;
