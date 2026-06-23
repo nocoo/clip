@@ -424,6 +424,24 @@ describe("generateCli — browser-login schemas", () => {
     expect(loginContent).toContain("0o700");
   });
 
+  it("login command honours CLIP_BASE_URL to redirect to a self-hosted deployment", async () => {
+    const outputDir = join(tempDir, "browser-login-env-override");
+    await generateCli(OAUTH_SCHEMA, outputDir);
+
+    const loginContent = await readFile(
+      join(outputDir, "src/commands/_login.ts"),
+      "utf-8",
+    );
+
+    // Source URL from clip.yaml stays in as the default …
+    expect(loginContent).toContain('"https://app.example.com"');
+    // … but is wrapped in a CLIP_BASE_URL override so self-hosters can
+    // redirect without rebuilding the CLI (same env var the client uses).
+    expect(loginContent).toContain(
+      'process.env.CLIP_BASE_URL ?? "https://app.example.com"',
+    );
+  });
+
   it("registers a 'login' subcommand in index.ts", async () => {
     const outputDir = join(tempDir, "browser-login-index");
     await generateCli(OAUTH_SCHEMA, outputDir);

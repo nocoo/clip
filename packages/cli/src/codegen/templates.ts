@@ -323,11 +323,17 @@ export async function loginCommand(): Promise<void> {
   const dir = join(clipHome, alias);
   const credPath = join(dir, "credentials.json");
 
+  // Honour CLIP_BASE_URL the same way client.ts does, so a single env var
+  // overrides BOTH business calls and the login endpoint. This lets users
+  // of self-hosted deployments redirect every request without rebuilding
+  // the CLI; default falls back to the URL baked in at codegen time.
+  const apiUrl = process.env.CLIP_BASE_URL ?? "${apiUrl}";
+
   console.log(\`🔐 Opening browser to log in to "\${alias}"...\`);
 
   let savedToken: string | null = null;
   const result = await performLogin({
-    apiUrl: "${apiUrl}",
+    apiUrl,
     loginPath: "${loginPath}",
     tokenParam: "${tokenParam}",
     timeoutMs: 5 * 60 * 1000,
