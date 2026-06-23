@@ -509,6 +509,44 @@ describe("authLogin", () => {
     });
   });
 
+  it("CLIP_BASE_URL overrides apiUrl for self-hosted deployments", async () => {
+    const { authLogin } = await import("../../../src/commands/auth");
+
+    const captured: { apiUrl?: string; loginPath?: string } = {};
+    const performLogin = mock(
+      async (deps: {
+        apiUrl: string;
+        loginPath: string;
+        onSaveToken: (t: string) => void;
+      }) => {
+        captured.apiUrl = deps.apiUrl;
+        captured.loginPath = deps.loginPath;
+        deps.onSaveToken("t");
+        return { success: true };
+      },
+    );
+
+    const original = process.env.CLIP_BASE_URL;
+    process.env.CLIP_BASE_URL = "https://self-hosted.example.com";
+    try {
+      await authLogin("plain-login", {
+        parseSchema: async () => browserLoginSchema,
+        // biome-ignore lint/suspicious/noExplicitAny: test mock typing
+        performLogin: performLogin as any,
+        openBrowser: mock(async () => {}),
+      });
+    } finally {
+      if (original === undefined) delete process.env.CLIP_BASE_URL;
+      else process.env.CLIP_BASE_URL = original;
+    }
+
+    // loginPath stays the same; apiUrl flips to the env override regardless
+    // of what schema.baseUrl said. Self-hosters set CLIP_BASE_URL once and
+    // every CLI call — including login — targets their worker.
+    expect(captured.apiUrl).toBe("https://self-hosted.example.com");
+    expect(captured.loginPath).toBe("/api/auth/cli");
+  });
+
   it("exits when clip.yaml cannot be parsed", async () => {
     const { authLogin } = await import("../../../src/commands/auth");
 
