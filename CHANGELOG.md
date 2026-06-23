@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0] - 2026-06-23
+
+Minor: redirect-friendly login for self-hosted deployments.
+
+### Added
+- `CLIP_BASE_URL` environment variable now overrides the apiUrl used
+  by **both** generated business calls (already supported) and the
+  generated `<alias> login` flow (previously hardcoded at codegen
+  time). The same override also affects `clip auth login` so the
+  dev-facing wrapper agrees. Users of a self-hosted SaaS can now
+  redirect every CLI call — login included — with one env var, no
+  rebuild required.
+
 ## [1.0.0] - 2026-06-21
 
 First stable release. Project scope locked to two problems: credential
