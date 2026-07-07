@@ -21,9 +21,9 @@
     "@biomejs/biome": "2.5.2",
     "@nocoo/cli-base": "0.2.4",
     "@types/bun": "1.3.14",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "typescript": "^6.0.2",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   },
   "overrides": {
     "devalue": ">=5.8.1",
