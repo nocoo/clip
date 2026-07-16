@@ -11,15 +11,15 @@ import type { ClipSchema } from "../schema/types";
  * `clip auth login <alias>` — perform browser-based login flow.
  *
  * Reads the local `clip.yaml` to discover browser-login configuration, runs
- * `performLogin()` from `@nocoo/cli-base`, and stores the received token
+ * `performLogin()` from `@nocoo/base-cli`, and stores the received token
  * as BrowserLoginCredentials.
  */
 export async function authLogin(
   alias: string,
   deps: {
     parseSchema?: (path: string) => Promise<ClipSchema>;
-    performLogin?: typeof import("@nocoo/cli-base").performLogin;
-    openBrowser?: typeof import("@nocoo/cli-base").openBrowser;
+    performLogin?: typeof import("@nocoo/base-cli").performLogin;
+    openBrowser?: typeof import("@nocoo/base-cli").openBrowser;
     timeoutMs?: number;
   } = {},
 ): Promise<void> {
@@ -62,7 +62,7 @@ export async function authLogin(
     ? new URL(browserLogin.loginUrl).pathname
     : browserLogin.loginPath;
 
-  const cliBase = await import("@nocoo/cli-base");
+  const cliBase = await import("@nocoo/base-cli");
   /* v8 ignore start -- production fallbacks; tests inject mocks */
   const performLogin = deps.performLogin ?? cliBase.performLogin;
   const openBrowser = deps.openBrowser ?? cliBase.openBrowser;

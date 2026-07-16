@@ -271,7 +271,7 @@ export function renderPackageJson(schema: ClipSchema): string {
     commander: "^15.0.0",
   };
   if (schema.auth.type === "browser-login") {
-    dependencies["@nocoo/cli-base"] = "^0.2.0";
+    dependencies["@nocoo/base-cli"] = "^0.3.0";
   }
   const pkg = {
     name: schema.alias,
@@ -312,7 +312,7 @@ export function renderLoginCommand(schema: ClipSchema): string {
     : a.loginPath;
   const tokenParam = a.tokenParam;
 
-  return `import { performLogin, openBrowser } from "@nocoo/cli-base";
+  return `import { performLogin, openBrowser } from "@nocoo/base-cli";
 import { chmod, mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";

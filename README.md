@@ -125,7 +125,7 @@ clip/
 | Language | [TypeScript 5](https://www.typescriptlang.org) strict mode |
 | Schema | [Zod](https://zod.dev) + [yaml](https://eemeli.org/yaml/) |
 | Generated CLI | [commander](https://github.com/tj/commander.js) |
-| Browser-login flow | [@nocoo/cli-base](https://github.com/nocoo/cli-base) |
+| Browser-login flow | [@nocoo/base-cli](https://github.com/nocoo/cli-base) |
 | Example API | [Hono](https://hono.dev) |
 | Docs Site | [Astro](https://astro.build) |
 | Lint / Format | [Biome](https://biomejs.dev) |

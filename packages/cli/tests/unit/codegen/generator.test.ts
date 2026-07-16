@@ -410,7 +410,7 @@ describe("generateCli — browser-login schemas", () => {
       "utf-8",
     );
 
-    expect(loginContent).toContain('from "@nocoo/cli-base"');
+    expect(loginContent).toContain('from "@nocoo/base-cli"');
     expect(loginContent).toContain("performLogin");
     expect(loginContent).toContain("openBrowser");
     expect(loginContent).toContain('"oapi"');
@@ -476,7 +476,7 @@ describe("generateCli — browser-login schemas", () => {
     expect(configContent).toContain("oapi login");
   });
 
-  it("adds @nocoo/cli-base to generated package.json for browser-login schemas", async () => {
+  it("adds @nocoo/base-cli to generated package.json for browser-login schemas", async () => {
     const outputDir = join(tempDir, "browser-login-pkg");
     await generateCli(OAUTH_SCHEMA, outputDir);
 
@@ -484,11 +484,11 @@ describe("generateCli — browser-login schemas", () => {
       await readFile(join(outputDir, "package.json"), "utf-8"),
     );
 
-    expect(pkg.dependencies["@nocoo/cli-base"]).toBeDefined();
+    expect(pkg.dependencies["@nocoo/base-cli"]).toBeDefined();
     expect(pkg.dependencies.commander).toBeDefined();
   });
 
-  it("does NOT add @nocoo/cli-base for header-auth schemas", async () => {
+  it("does NOT add @nocoo/base-cli for header-auth schemas", async () => {
     const outputDir = join(tempDir, "header-pkg");
     await generateCli(SAMPLE_SCHEMA, outputDir);
 
@@ -496,7 +496,7 @@ describe("generateCli — browser-login schemas", () => {
       await readFile(join(outputDir, "package.json"), "utf-8"),
     );
 
-    expect(pkg.dependencies["@nocoo/cli-base"]).toBeUndefined();
+    expect(pkg.dependencies["@nocoo/base-cli"]).toBeUndefined();
   });
 
   it("clip-metadata.json captures the browser-login login parameters", async () => {
