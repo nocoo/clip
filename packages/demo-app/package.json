@@ -11,6 +11,6 @@
   },
   "devDependencies": {},
   "dependencies": {
-    "hono": "4.12.32"
+    "hono": "4.12.33"
   }
 }
