@@ -9,6 +9,6 @@
   },
   "devDependencies": {},
   "dependencies": {
-    "hono": "4.13.4"
+    "hono": "4.13.5"
   }
 }
