@@ -6,8 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/runtime-Bun-000000" alt="Bun" />
-  <img src="https://img.shields.io/badge/language-TypeScript%205-3178c6" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/tests-184%20passing-2ea44f" alt="tests" />
+  <img src="https://img.shields.io/badge/language-TypeScript%207-3178c6" alt="TypeScript" />
   <img src="https://img.shields.io/badge/coverage-99%25-2ea44f" alt="coverage" />
 </p>
 
