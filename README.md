@@ -66,7 +66,7 @@ clip.yaml ──► clip generate ──► .clip-output/<alias>/
 git clone https://github.com/nocoo/clip.git
 cd clip
 bun install
-bun link packages/cli
+cd packages/cli && bun link
 ```
 
 ## 快速开始
@@ -174,7 +174,7 @@ bun run lint:deps    # osv-scanner 依赖漏洞扫描
 | [docs/features/02-cli-codegen.md](./docs/features/02-cli-codegen.md) | 代码生成管线 |
 | [docs/features/03-auth-storage.md](./docs/features/03-auth-storage.md) | 凭据存储与 `clip auth` 命令族 |
 | [docs/features/04-test-generation.md](./docs/features/04-test-generation.md) | 测试套件自动生成 |
-| [docs/features/05-example-api.md](./docs/features/05-example-api.md) | Hono Todo 集成测试 fixture |
+| [docs/features/05-example-api.md](./docs/features/05-example-api.md) | 小型 Hono Todo fixture（L2 用 `packages/demo-app`） |
 | [docs/features/06-marketing-website.md](./docs/features/06-marketing-website.md) | Astro 文档站 |
 
 ## License
