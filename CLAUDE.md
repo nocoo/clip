@@ -2,7 +2,7 @@
 
 Reads `clip.yaml`, generates a human-editable commander TypeScript CLI, and stores API credentials under `~/.clip/<alias>/credentials.json` (mode 0600).
 Profile: cli-library
-Direction: [docs/architecture/01-system-overview.md](docs/architecture/01-system-overview.md). Frameworks must not rewrite this file.
+Direction: [README.md](README.md). `docs/architecture/01-system-overview.md` omits `demo-app` and still describes old 90% L1. Frameworks must not rewrite this file.
 
 ## Sources of Truth
 
@@ -12,7 +12,7 @@ This file is the **contract**. Hooks, CI, and config are **enforcement**. If the
 |---|---|
 | Agent handbook | this file |
 | Human docs | README.md, `docs/architecture/*`, `docs/features/*` |
-| Version | root `package.json` `"version"` |
+| Version | root `package.json`; also `packages/cli/package.json` and hardcoded `.version()` in `packages/cli/src/index.ts` |
 | Enforcement | `scripts/hooks/*`, `.github/workflows/ci.yml`, `vitest.config.ts` |
 | Machine rules | global `AGENTS.md`, `rules/git-commit.md` |
 | Accidents | [Retrospective.md](Retrospective.md) |
@@ -89,7 +89,7 @@ E2E never uses production credentials.
 
 ## Operations / Release
 
-- No CD. Bump root `package.json` `"version"` when publishing `@clip` packages. Who: npm publish rights if a package is shipped.
+- No CD. Bump root `package.json`, `packages/cli/package.json`, and `packages/cli/src/index.ts` `.version()` together. Who: npm publish rights if a package is shipped.
 - Live-check: `bun run quality:full`.
 
 ## Retrospective
