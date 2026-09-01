@@ -106,8 +106,9 @@ todo list
 ```
 clip/
 ├── packages/
-│   ├── cli/           # 核心:schema 解析、codegen、auth 存储、test 生成
-│   ├── example-api/   # Hono Todo API,用于 dogfooding 和集成测试
+│   ├── cli/           # 核心:schema 解析、codegen、auth 存储
+│   ├── demo-app/      # L2 Bookmarks API（真 HTTP e2e）
+│   ├── example-api/   # 小型 Hono Todo fixture
 │   └── web/           # Astro 文档站
 ├── docs/
 │   ├── architecture/  # 架构设计
@@ -121,7 +122,7 @@ clip/
 | 层 | 技术 |
 |----|------|
 | Runtime | [Bun](https://bun.sh) |
-| Language | [TypeScript 5](https://www.typescriptlang.org) strict mode |
+| Language | [TypeScript 7](https://www.typescriptlang.org) strict mode |
 | Schema | [Zod](https://zod.dev) + [yaml](https://eemeli.org/yaml/) |
 | Generated CLI | [commander](https://github.com/tj/commander.js) |
 | Browser-login flow | [@nocoo/base-cli](https://github.com/nocoo/cli-base) |
@@ -151,9 +152,10 @@ bun run lint:deps    # osv-scanner 依赖漏洞扫描
 
 | 层 | 内容 | 触发时机 |
 |----|------|---------|
-| Unit | `packages/cli/tests/unit/` — schema / codegen / auth / commands | `bun run test:unit` |
-| Pre-commit hook | `lint` + `typecheck` + `test:unit` | 每次 `git commit` |
-| Pre-push hook | `gitleaks` + `osv-scanner` | 每次 `git push` |
+| L1 | Vitest：cli + example-api + demo-app，覆盖率 95% 四项 | pre-commit `test:unit` + CI |
+| L2 | `tests/e2e/` 真 spawn + 真 HTTP | pre-push + CI |
+| G1 | tsc + Biome | pre-commit + CI |
+| G2 | gitleaks + osv-scanner | pre-push + CI |
 
 ## 安全
 
