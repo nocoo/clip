@@ -2,7 +2,8 @@ import { resolve } from "node:path";
 import { generate } from "./generate";
 
 /**
- * `clip install [path]` — generate + bun link the generated CLI.
+ * `clip install [path]` — generate, install dependencies, and link the
+ * generated CLI.
  */
 export async function install(schemaPath: string): Promise<void> {
   const schema = await (await import("../schema/parser")).parseClipSchema(
@@ -11,6 +12,18 @@ export async function install(schemaPath: string): Promise<void> {
   await generate(schemaPath);
 
   const outputDir = resolve(`.clip-output/${schema.alias}`);
+
+  const installProc = Bun.spawn(["bun", "install"], {
+    cwd: outputDir,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  const installExitCode = await installProc.exited;
+
+  if (installExitCode !== 0) {
+    console.error("❌ bun install failed");
+    process.exit(installExitCode);
+  }
 
   const proc = Bun.spawn(["bun", "link"], {
     cwd: outputDir,

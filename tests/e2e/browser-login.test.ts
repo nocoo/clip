@@ -19,6 +19,7 @@ import type { performLogin as PerformLogin } from "@nocoo/base-cli";
 import { authLogin } from "../../packages/cli/src/commands/auth";
 import {
   type DemoAppHandle,
+  installGenerated,
   makeTempClipHome,
   requireSetup,
   runCleanups,
@@ -57,6 +58,7 @@ beforeAll(async () => {
 
   generatedDir = await mkdtemp(join(tmpdir(), "clip-e2e-bl-gen-"));
   await runGenerate(join(workDir, "clip.yaml"), generatedDir);
+  await installGenerated(generatedDir);
 
   const home = await makeTempClipHome();
   clipHomeDir = home.path;

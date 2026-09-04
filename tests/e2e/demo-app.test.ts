@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   type DemoAppHandle,
+  installGenerated,
   makeTempClipHome,
   requireSetup,
   runCleanups,
@@ -44,6 +45,7 @@ beforeAll(async () => {
 
   generatedDir = await mkdtemp(join(tmpdir(), "clip-e2e-gen-"));
   await runGenerate(bookmarksSchemaPath, generatedDir);
+  await installGenerated(generatedDir);
 
   const home = await makeTempClipHome();
   clipHomeDir = home.path;
