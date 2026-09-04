@@ -3,7 +3,8 @@
  * run the clip CLI, exec the generated CLI, and clean up after each test.
  *
  * These are real-process tests: nothing is mocked. Tests prove that
- *   clip generate → install-free `bun run <generated>/src/index.ts <cmd>`
+ *   clip generate → install generated dependencies →
+ *   `bun run <generated>/src/index.ts <cmd>`
  *   → HTTP request → demo-app
  * produces the expected behavior end-to-end.
  */
@@ -136,12 +137,17 @@ export interface RunProcessResult {
  * the classic pipe-buffer deadlock where the child blocks on a full pipe
  * because the parent only reads stderr after .exited resolves.
  */
-async function runProcess(
+export async function runProcess(
   cmd: string[],
-  opts: { env?: Record<string, string>; timeoutMs?: number } = {},
+  opts: {
+    cwd?: string;
+    env?: Record<string, string>;
+    timeoutMs?: number;
+  } = {},
 ): Promise<RunProcessResult> {
   const proc = spawn({
     cmd,
+    cwd: opts.cwd,
     env: { ...process.env, ...(opts.env ?? {}) },
     stdout: "pipe",
     stderr: "pipe",
@@ -202,6 +208,21 @@ export async function runGenerate(
 }
 
 export type RunGeneratedResult = RunProcessResult;
+
+/**
+ * Install the dependencies declared by a generated standalone CLI project.
+ */
+export async function installGenerated(generatedDir: string): Promise<void> {
+  const r = await runProcess(["bun", "install", "--ignore-scripts"], {
+    cwd: generatedDir,
+    timeoutMs: 30_000,
+  });
+  if (r.code !== 0) {
+    throw new Error(
+      `generated CLI dependency installation failed (exit ${r.code})\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}`,
+    );
+  }
+}
 
 /**
  * Exec the generated CLI's index.ts with args, returning code + captured streams.
