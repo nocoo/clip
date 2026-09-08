@@ -1,182 +1,134 @@
-<p align="center"><img src="logo.png" width="128" height="128" alt="clip" /></p>
-
-<h1 align="center">clip</h1>
-
-<p align="center"><strong>把 API schema 变成可用的 CLI 工具</strong><br>读取 clip.yaml · 生成 commander CLI · 统一管理 API 凭据</p>
-
 <p align="center">
-  <img src="https://img.shields.io/badge/runtime-Bun-000000" alt="Bun" />
-  <img src="https://img.shields.io/badge/language-TypeScript%207-3178c6" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/coverage-99%25-2ea44f" alt="coverage" />
+  <img src="logo.png" width="128" height="128" alt="clip logo" />
 </p>
-
----
+<h1 align="center">clip</h1>
+<p align="center">用 clip.yaml 生成可编辑的 TypeScript CLI，并按工具名称管理 API 凭据。</p>
+<p align="center"><a href="docs/README.en.md">English</a></p>
 
 ## 这是什么
 
-clip 解决两个具体问题:
+clip 面向需要给 HTTP API 配套命令行客户端的开发者。它读取 `clip.yaml` 中的接口和鉴权配置，生成基于 commander 的 Bun CLI：每个接口对应一条命令和一个可独立修改的 TypeScript 文件。
 
-1. **认证** — 在 `~/.clip/<alias>/credentials.json`(0600 权限)安全存储 API 凭据,支持 `header` API key、`browser-login` 浏览器登录、`cf-access` 服务令牌三种鉴权形式
-2. **API → CLI** — 读取 `clip.yaml`,生成一个 commander 驱动的 TypeScript CLI 项目,每个 endpoint 是一个可独立编辑的命令文件
-
-定义一次 schema,得到一个会自动注入鉴权头的命令行客户端;凭据存储与生成的 CLI 解耦,凭据轮换不需要重生成代码。
-
-```
-clip.yaml ──► clip generate ──► .clip-output/<alias>/
-                                  └─ commander CLI (TypeScript)
-                                       │
-                                       └─► reads ~/.clip/<alias>/credentials.json
-                                            (managed by `clip auth …`)
-```
+凭据由 `clip auth` 单独管理，生成的命令运行时读取凭据并添加请求头，换 key 不必重新生成代码。生成器面向返回 JSON 的 API，输入格式是项目自己的 `clip.yaml`。
 
 ## 功能
 
-### CLI 命令
+- 校验 schema 的字段、命令名称、路径参数以及重复接口定义。
+- 将路径参数变成位置参数，将 query 和 JSON body 字段变成命令行选项，处理必填项和基础数字、布尔值转换。
+- 生成 CLI 入口、HTTP client、凭据读取器、独立命令文件及项目配置。
+- 支持单请求头 API key、浏览器登录 token、Cloudflare Access 双请求头服务令牌。
+- 通过 `CLIP_BASE_URL` 切换目标服务，通过 `CLIP_HOME` 指定凭据目录。
+- 为 header 和 browser-login 配置生成 API 测试；`cf-access` 目前只生成 CLI，不生成这组测试。
 
-- **`clip generate [path]`** — 读取 `clip.yaml`(或指定路径),生成 CLI 项目到 `.clip-output/<alias>/`
-- **`clip install [path]`** — 生成后通过 `bun link` 把 CLI 全局可用
-- **`clip auth set <alias>`** — 保存 header 或 cf-access 凭据,带交互式遮罩输入
-- **`clip auth login <alias>`** — 走浏览器登录流程拿 token,适用于 `browser-login` 类型 schema
-- **`clip auth show <alias>`** — 显示遮罩后的凭据
-- **`clip auth remove <alias>`** — 删除凭据
-- **`clip test <alias>`** — 对生成的 CLI 跑实时 API 测试
+生成的代码可以手动调整。再次生成会覆盖同名文件，修改后应先保存自己的版本。数组参数、非 JSON 响应等处理需要按具体 API 调整生成代码。
 
-### 三种鉴权形态
+## 使用
 
-| 类型 | 用途 | 凭据来源 |
-|------|------|---------|
-| `header` | 单 header API key(如 `X-API-Key`) | `clip auth set` 交互输入 |
-| `browser-login` | 用户在浏览器登录后回调 loopback 拿 token | `clip auth login` 自动打开浏览器 |
-| `cf-access` | Cloudflare Access service token,双 header | `clip auth set --client-id ... --client-secret ...` |
+### 从源码安装
 
-### Schema 驱动的代码生成
-
-`clip.yaml` 声明 endpoint 后,生成的代码包括:
-
-- `src/index.ts` — commander 入口,每个 endpoint 一个 sub-command
-- `src/commands/<name>.ts` — 单个 endpoint 的实现(可读、可手改)
-- `src/client.ts` — 注入鉴权头的 fetch 封装
-- `src/config.ts` — 从 `~/.clip/<alias>/credentials.json` 解析鉴权
-- `package.json` + `tsconfig.json` — 完整可独立运行的 bun 项目
-
-## 安装
+需要 Bun。CLI 包在仓库中标记为 private，使用源码安装：
 
 ```bash
-# 当前只支持源码安装(尚未发布到 npm)
 git clone https://github.com/nocoo/clip.git
 cd clip
-bun install
-cd packages/cli && bun link
+bun install --frozen-lockfile
+cd packages/cli
+bun link
+cd ../..
+clip --help
 ```
 
-## 快速开始
+确保 Bun 的可执行文件目录位于 `PATH` 中。也可以在仓库根目录用 `bun packages/cli/src/index.ts` 代替 `clip`，不注册全局命令。
+
+### 跑通本地示例
+
+在仓库根目录的一个终端启动内存中的 Todo API：
 
 ```bash
-# 1. 在项目根目录写一份 clip.yaml(见 docs/features/01-schema-definition.md)
-cat > clip.yaml <<'EOF'
-name: "Todo API"
-alias: todo
-version: "1.0.0"
-baseUrl: "http://localhost:3000"
-auth:
-  type: header
-  headerName: "X-API-Key"
-endpoints:
-  - name: list
-    method: GET
-    path: /todos
-    description: "List all todos"
-EOF
+bun packages/example-api/src/index.ts
+```
 
-# 2. 生成 CLI
-clip generate
+它默认使用 `http://localhost:3456`。在另一个终端回到仓库根目录：
 
-# 3. 保存凭据
-clip auth set todo
-
-# 4. 全局安装生成的 CLI
-clip install
-
-# 5. 使用
+```bash
+clip auth set todo --header X-API-Key
+clip install packages/example-api/clip.yaml
+todo list
+todo create --title 'Try clip'
 todo list
 ```
 
-## 项目结构
+第一个命令会提示输入 key。本地示例的默认值为 `test-api-key`；如果启动服务时设置了 `API_KEY`，输入对应值。`clip install` 会生成项目、安装生成项目的依赖，再通过 `bun link` 注册 `todo` 命令。
 
-```
-clip/
-├── packages/
-│   ├── cli/           # 核心:schema 解析、codegen、auth 存储
-│   ├── demo-app/      # L2 Bookmarks API（真 HTTP e2e）
-│   ├── example-api/   # 小型 Hono Todo fixture
-│   └── web/           # Astro 文档站
-├── docs/
-│   ├── architecture/  # 架构设计
-│   └── features/      # 各模块详细设计
-├── scripts/hooks/     # Git pre-commit / pre-push 钩子
-└── logo.png
-```
+接入自己的 API 时，从 [示例 schema](packages/example-api/clip.yaml) 复制并修改 `name`、`alias`、`baseUrl`、`auth` 和 `endpoints`。只生成文件可用 `clip generate path/to/clip.yaml`；默认输出到 `.clip-output/<alias>/`，用 `--output` 指定其他目录。
 
-## 技术栈
+### 鉴权和凭据
 
-| 层 | 技术 |
-|----|------|
-| Runtime | [Bun](https://bun.sh) |
-| Language | [TypeScript 7](https://www.typescriptlang.org) strict mode |
-| Schema | [Zod](https://zod.dev) + [yaml](https://eemeli.org/yaml/) |
-| Generated CLI | [commander](https://github.com/tj/commander.js) |
-| Browser-login flow | [@nocoo/base-cli](https://github.com/nocoo/cli-base) |
-| Example API | [Hono](https://hono.dev) |
-| Docs Site | [Astro](https://astro.build) |
-| Lint / Format | [Biome](https://biomejs.dev) |
-| Testing | [Vitest](https://vitest.dev) + Bun test |
+| 鉴权类型 | 使用方式 |
+| --- | --- |
+| `header` | `clip auth set <alias>`；在含 `clip.yaml` 的目录读取 header 名称，也可传 `--header` |
+| `browser-login` | 在含对应 `clip.yaml` 的目录运行 `clip auth login <alias>`；生成的 CLI 也有 `login` 命令 |
+| `cf-access` | 在含对应 `clip.yaml` 的目录运行 `clip auth set <alias>`，按提示输入 Client ID 和 Client Secret |
+
+浏览器登录需要服务端实现 `@nocoo/base-cli` 对应的登录和本机回调协议，默认入口为 `/api/auth/cli`。它不能自动适配任意网站的登录页。
+
+凭据默认保存在 `~/.clip/<alias>/credentials.json`。目录权限为 `0700`，文件为 `0600`；内容是明文 JSON。建议用交互输入保存真实凭据，避免将值写入 shell history。`clip auth show <alias>` 显示遮罩值，`clip auth remove <alias>` 删除凭据。
+
+`clip test <alias>` 会对配置的 API 执行生成测试，可能调用创建、更新或删除接口，应使用专门的测试服务和数据。
 
 ## 开发
 
+在仓库根目录执行：
+
 ```bash
-bun install          # 安装依赖
-bun run lint         # Biome 静态检查
-bun run typecheck    # tsc --noEmit
-bun run test:unit    # Vitest 单元测试 + 覆盖率
-bun run lint:secrets # gitleaks 扫描
-bun run lint:deps    # osv-scanner 依赖漏洞扫描
+bun install --frozen-lockfile
+bun run typecheck
+bun run lint
 ```
 
-| 命令 | 说明 |
-|------|------|
-| `bun run lint` | Biome 检查 + 格式化校验 |
-| `bun run typecheck` | TypeScript 全项目类型检查 |
-| `bun run test:unit` | Vitest 跑所有单元测试,生成 v8 覆盖率 |
+文档站位于 `packages/web/`，开发命令如下；Astro 工具链需要受支持的 Node.js，建议使用 Node.js 24 或更新版本。
+
+```bash
+bun run --cwd packages/web dev
+bun run --cwd packages/web build
+```
+
+| 路径 | 内容 |
+| --- | --- |
+| `packages/cli/` | Schema、代码生成、凭据管理 |
+| `packages/example-api/` | Todo API 和示例 schema |
+| `packages/demo-app/` | Bookmarks API、登录流程测试服务 |
+| `packages/web/` | Astro 静态文档站 |
+| `tests/e2e/` | 实际 CLI 进程与 HTTP 集成测试 |
 
 ## 测试
 
-| 层 | 内容 | 触发时机 |
-|----|------|---------|
-| L1 | Vitest：cli + example-api + demo-app，覆盖率 95% 四项 | pre-commit `test:unit` + CI |
-| L2 | `tests/e2e/` 真 spawn + 真 HTTP | pre-push + CI |
-| G1 | tsc + Biome | pre-commit + CI |
-| G2 | gitleaks + osv-scanner | pre-push + CI |
+```bash
+bun run test:unit
+bun run test:e2e
+```
 
-## 安全
+第一条运行 Vitest 单元测试并生成覆盖率报告。第二条启动临时 API 服务，运行实际生成的 CLI，验证请求、浏览器登录回调和安装流程；测试使用临时凭据目录、独立端口和隔离的 Bun 安装目录，不需要生产凭据。
 
-- 凭据目录 `~/.clip/<alias>/` 创建时强制 `0700`,credentials.json `0600`
-- 通过 `CLIP_HOME` 环境变量可重定向凭据存储位置
-- `clip auth set --key <value>` 会留在 shell history,推荐省略 `--key` 使用交互式遮罩输入
-- pre-push 跑 gitleaks 防止凭据泄漏入仓
-- pre-push 跑 osv-scanner 扫描 bun.lock 依赖漏洞
+## 技术栈
+
+| 技术 | 用途 |
+| --- | --- |
+| Bun、TypeScript | CLI 运行环境和工作区 |
+| commander | 生成的命令行路由和参数解析 |
+| Zod、yaml | Schema 解析与校验 |
+| `@nocoo/base-cli` | 浏览器登录和本机回调 |
+| Hono | 本地示例和测试 API |
+| Astro | 静态文档站 |
+| Vitest、Bun test | 单元与进程 / HTTP 集成测试 |
 
 ## 文档
 
-| 文档 | 说明 |
-|------|------|
-| [docs/architecture/](./docs/architecture/README.md) | 系统总览与数据流 |
-| [docs/features/01-schema-definition.md](./docs/features/01-schema-definition.md) | `clip.yaml` 字段规范与 Zod schema |
-| [docs/features/02-cli-codegen.md](./docs/features/02-cli-codegen.md) | 代码生成管线 |
-| [docs/features/03-auth-storage.md](./docs/features/03-auth-storage.md) | 凭据存储与 `clip auth` 命令族 |
-| [docs/features/04-test-generation.md](./docs/features/04-test-generation.md) | 测试套件自动生成 |
-| [docs/features/05-example-api.md](./docs/features/05-example-api.md) | 小型 Hono Todo fixture（L2 用 `packages/demo-app`） |
-| [docs/features/06-marketing-website.md](./docs/features/06-marketing-website.md) | Astro 文档站 |
+- [文档索引与设计背景](docs/README.md)
+- [当前 schema 定义](packages/cli/src/schema/validator.ts)
+- [Todo API 示例](packages/example-api/clip.yaml)
+- [代码生成模板](packages/cli/src/codegen/templates.ts)
 
-## License
+## 许可证
 
-[MIT](LICENSE) © 2026 Zheng Li
+[MIT](LICENSE)
