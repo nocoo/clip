@@ -2,7 +2,7 @@
 
 ## 1. MonoRepo Structure
 
-clip uses a **Bun workspace** MonoRepo with three packages:
+clip uses a **Bun workspace** MonoRepo with four packages:
 
 ```
 clip/
@@ -13,7 +13,7 @@ clip/
 │   │   │   ├── commands/
 │   │   │   │   ├── generate.ts       # clip generate — schema → CLI codegen
 │   │   │   │   ├── install.ts        # clip install — generate + global link
-│   │   │   │   ├── auth.ts           # clip auth set|show|remove
+│   │   │   │   ├── auth.ts           # clip auth set|login|show|remove
 │   │   │   │   └── test.ts           # clip test <alias> — run generated tests
 │   │   │   ├── schema/
 │   │   │   │   ├── parser.ts         # YAML → raw object
@@ -21,17 +21,10 @@ clip/
 │   │   │   │   └── types.ts          # TypeScript types derived from Zod schemas
 │   │   │   ├── codegen/
 │   │   │   │   ├── generator.ts      # AST → TypeScript source files
-│   │   │   │   ├── templates/        # Template-literal templates
-│   │   │   │   │   ├── index.ts.tpl
-│   │   │   │   │   ├── command.ts.tpl
-│   │   │   │   │   ├── client.ts.tpl
-│   │   │   │   │   └── config.ts.tpl
+│   │   │   │   ├── templates.ts      # Template-literal templates (human-readable)
 │   │   │   │   └── test-generator.ts # Schema → test file generation
-│   │   │   ├── auth/
-│   │   │   │   └── storage.ts        # Read/write $CLIP_HOME/<alias>/credentials.json
-│   │   │   └── utils/
-│   │   │       ├── fs.ts             # File system helpers (mkdir, write, chmod)
-│   │   │       └── logger.ts         # Structured console output
+│   │   │   └── auth/
+│   │   │       └── storage.ts        # Read/write $CLIP_HOME/<alias>/credentials.json
 │   │   ├── tests/
 │   │   │   ├── unit/
 │   │   │   │   ├── schema/
@@ -40,11 +33,14 @@ clip/
 │   │   │   │   ├── codegen/
 │   │   │   │   │   ├── generator.test.ts
 │   │   │   │   │   └── test-generator.test.ts
-│   │   │   │   └── auth/
-│   │   │   │       └── storage.test.ts
+│   │   │   │   ├── commands/
+│   │   │   │   │   ├── generate.test.ts
+│   │   │   │   │   └── auth.test.ts
+│   │   │   │   ├── auth/
+│   │   │   │   │   └── storage.test.ts
+│   │   │   │   └── setup.test.ts
 │   │   │   └── integration/
-│   │   │       ├── generate.test.ts    # End-to-end generate flow
-│   │   │       └── auth.test.ts        # End-to-end auth flow
+│   │   │       └── .gitkeep            # Empty placeholder; L2 lives at tests/e2e/
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
@@ -62,17 +58,33 @@ clip/
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   │
-│   └── example-api/      # @clip/example-api — Hono Todo App
+│   ├── example-api/      # @clip/example-api — Hono Todo App (small fixture)
+│   │   ├── src/
+│   │   │   ├── index.ts              # Server entry, Hono app setup
+│   │   │   ├── routes/
+│   │   │   │   └── todos.ts          # CRUD route handlers
+│   │   │   ├── middleware/
+│   │   │   │   └── auth.ts           # X-API-Key header validation
+│   │   │   └── store.ts              # In-memory todo storage
+│   │   ├── clip.yaml                 # Schema for dogfooding
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── demo-app/         # @clip/demo-app — L2 Bookmarks API fixture
 │       ├── src/
-│       │   ├── index.ts              # Server entry, Hono app setup
-│       │   ├── routes/
-│       │   │   └── todos.ts          # CRUD route handlers
-│       │   ├── middleware/
-│       │   │   └── auth.ts           # X-API-Key header validation
-│       │   └── store.ts              # In-memory todo storage
-│       ├── clip.yaml                 # Schema for dogfooding
+│       │   ├── index.ts              # Server entry, Hono Bookmarks API
+│       │   └── store.ts              # In-memory bookmark storage
+│       ├── tests/
+│       ├── clip.yaml                 # Schema used by L2 e2e
 │       ├── package.json
-│       └── tsconfig.json
+│       └── vitest.config.ts
+│
+├── tests/
+│   └── e2e/              # L2 — real spawn + real HTTP
+│       ├── browser-login.test.ts
+│       ├── cli-install.test.ts
+│       ├── demo-app.test.ts
+│       └── support.ts                # startDemoApp(), temp CLIP_HOME helpers
 │
 ├── docs/                 # Design documents (this directory)
 ├── README.md             # Project README
@@ -102,18 +114,18 @@ peer = false
 ## 2. Package Dependency Graph
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   clip MonoRepo                  │
-│                                                  │
-│  ┌──────────┐   ┌──────────┐   ┌─────────────┐  │
-│  │ @clip/cli│   │ @clip/web│   │@clip/example │  │
-│  │          │   │          │   │    -api      │  │
-│  └──────────┘   └──────────┘   └─────────────┘  │
-│       │              │               │           │
-│       │              │               │           │
-│  No cross-package dependencies at build time     │
-│  example-api is used at test time by cli         │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        clip MonoRepo                          │
+│                                                               │
+│  ┌──────────┐  ┌──────────┐  ┌─────────────┐  ┌────────────┐ │
+│  │ @clip/cli│  │ @clip/web│  │@clip/example│  │@clip/demo- │ │
+│  │          │  │          │  │    -api     │  │    app     │ │
+│  └──────────┘  └──────────┘  └─────────────┘  └────────────┘ │
+│       │             │               │                │        │
+│  No cross-package dependencies at build time                  │
+│  L2 e2e uses demo-app as live HTTP fixture; example-api is a  │
+│  small fixture (unit-tested, not the L2 server)               │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 **Key principle**: Each package is independently buildable. There are **no cross-package build-time dependencies**.
@@ -123,8 +135,9 @@ peer = false
 | `@clip/cli` | Zod, yaml (npm) | None cross-package |
 | `@clip/web` | Astro, framework deps | None cross-package |
 | `@clip/example-api` | Hono | None cross-package |
+| `@clip/demo-app` | Hono | None cross-package |
 
-The only cross-package relationship is at **integration test time**: `@clip/cli` integration tests start `@clip/example-api` as a test fixture server.
+The only cross-package relationship at **test time** is L2 e2e: repo-root `tests/e2e/` starts `@clip/demo-app` as a live HTTP fixture (temp `CLIP_HOME`). `@clip/example-api` remains a small Hono fixture with its own unit tests.
 
 ## 3. Data Flow
 
@@ -159,7 +172,7 @@ clip.yaml                          .clip-output/<alias>/
 3. **Generate** — `packages/cli/src/codegen/generator.ts`
    - Takes validated `ClipSchema` AST
    - Creates output directory `.clip-output/<alias>/`
-   - Renders TypeScript source files from templates:
+   - Renders TypeScript source files from templates in `packages/cli/src/codegen/templates.ts`:
      - `src/index.ts` — command router mapping endpoint names to command files
      - `src/commands/<name>.ts` — one file per endpoint, handles arg parsing + HTTP call
      - `src/client.ts` — HTTP client with auth header injection
@@ -204,9 +217,10 @@ clip.yaml                          .clip-output/<alias>/
 | **Schema Validation** | Zod | Runtime type checking, excellent error messages, TypeScript type inference |
 | **YAML Parsing** | `yaml` npm package | Full YAML 1.2 spec, good error reporting with line numbers |
 | **Example API** | Hono | Lightweight, fast, TypeScript-first, works well with Bun |
+| **Demo App** | Hono | L2 Bookmarks API fixture used by e2e tests |
 | **Marketing Site** | Astro | Static-first, fast builds, great for docs sites, MD/MDX support |
 | **Linting/Formatting** | Biome | All-in-one linter + formatter, fast (Rust-based), replaces ESLint + Prettier |
-| **Testing** | Bun test + Vitest | Bun test for unit tests, Vitest for integration tests needing richer features |
+| **Testing** | Vitest (L1) + Bun-runner L2 | Vitest for unit tests; Bun-runner L2 in `tests/e2e/` (real spawn + real HTTP) |
 | **CLI Framework** | Commander.js | Mature, well-documented, handles subcommands and arg parsing |
 
 ## 5. 6DQ Quality System
@@ -215,31 +229,32 @@ The 6DQ (6-Dimension Quality) system ensures code quality through layered automa
 
 ### L1 — Unit Tests
 
-- **Tool**: `bun test` (for `@clip/cli` and `@clip/example-api`)
-- **Coverage threshold**: 90% line coverage minimum
+- **Tool**: Vitest (projects for `@clip/cli`, `@clip/example-api`, and `@clip/demo-app`)
+- **Coverage threshold**: 95% lines / functions / branches / statements (`vitest.config.ts`)
 - **Scope**: Individual functions and modules in isolation
 - **Location**: `packages/*/tests/unit/`
-- **Run command**: `bun test --coverage`
-- **Configuration** in `package.json`:
+- **Run command**: `bun run test:unit`
+- **Configuration** in root `package.json` / `vitest.config.ts`:
   ```jsonc
   {
     "scripts": {
-      "test:unit": "bun test tests/unit --coverage"
+      "test:unit": "vitest run --coverage"
     }
   }
   ```
 
-### L2 — Integration Tests
+### L2 — End-to-End Tests
 
-- **Tool**: Vitest (for complex async test scenarios)
-- **Scope**: End-to-end flows using `@clip/example-api` as a live test server
-- **Location**: `packages/cli/tests/integration/`
+- **Tool**: Bun-runner e2e (real process spawn + real HTTP)
+- **Scope**: End-to-end flows using `@clip/demo-app` as a live test server
+- **Location**: `tests/e2e/` (`browser-login.test.ts`, `cli-install.test.ts`, `demo-app.test.ts`, `support.ts`)
+- **Note**: `packages/cli/tests/integration/` holds only `.gitkeep` (empty placeholder). Real L2 lives at repo-root `tests/e2e/`.
 - **Flow**:
-  1. Start `@clip/example-api` on a random port
-  2. Run `clip generate` against the example `clip.yaml`
-  3. Run generated tests against the live server
+  1. Start `@clip/demo-app` on a random port (`startDemoApp()`)
+  2. Use a temp `CLIP_HOME` (never the human `~/.clip`)
+  3. Spawn the CLI against live HTTP and assert behavior
   4. Tear down server
-- **Run command**: `bun run test:integration`
+- **Run command**: `bun run test:e2e`
 
 ### G1 — Static Analysis
 
@@ -259,7 +274,7 @@ The 6DQ (6-Dimension Quality) system ensures code quality through layered automa
     }
   }
   ```
-- **Run command**: `biome check . --error-on-warnings && tsc --noEmit`
+- **Run command**: `biome check . --error-on-warnings && tsc --noEmit` (via `bun run lint` and `bun run typecheck`)
 
 ### G2 — Security Scanning
 
@@ -267,7 +282,7 @@ The 6DQ (6-Dimension Quality) system ensures code quality through layered automa
 - **Scope**: Entire repository
 - **Run commands**:
   - `gitleaks detect --source .`
-  - `osv-scanner --lockfile bun.lockb`
+  - `osv-scanner --lockfile bun.lock`
 
 ### Git Hooks
 
@@ -299,38 +314,39 @@ scripts/hooks/
 
 | Package | Coverage Threshold | Rationale |
 |---------|-------------------|-----------|
-| `@clip/cli` | 90% line coverage | Core logic, must be well-tested |
-| `@clip/example-api` | 90% line coverage | Reference implementation, validates the clip workflow |
+| `@clip/cli` | 95% lines/functions/branches/statements | Core logic, must be well-tested |
+| `@clip/example-api` | 95% lines/functions/branches/statements | Small fixture, validates the clip workflow |
+| `@clip/demo-app` | 95% lines/functions/branches/statements | L2 Bookmarks API fixture |
 | `@clip/web` | Excluded from coverage | Static site with no business logic |
 
 **Pre-commit hook** — `scripts/hooks/pre-commit` (fast, local checks):
 ```bash
 #!/bin/bash
 set -e
+# G1 — Static analysis
+bun run lint
+bun run typecheck
 # L1 — Unit tests
 bun run test:unit
-# G1 — Static analysis
-biome check . --error-on-warnings
-tsc --noEmit
 ```
 
 **Pre-push hook** — `scripts/hooks/pre-push` (thorough checks):
 ```bash
 #!/bin/bash
 set -e
-# L2 — Integration tests
-bun run test:integration
+# L2 — End-to-end behavior proofs (real spawn, real HTTP)
+bun run test:e2e
 # G2 — Security scanning
 gitleaks detect --source .
-osv-scanner --lockfile bun.lockb
+osv-scanner --lockfile bun.lock
 ```
 
 ### Quality Gate Summary
 
 | Dimension | Tool | Trigger | Threshold |
 |-----------|------|---------|-----------|
-| L1 Unit | bun test | pre-commit | 90% coverage |
-| L2 Integration | Vitest | pre-push | All pass |
+| L1 Unit | Vitest | pre-commit | 95% lines/functions/branches/statements |
+| L2 E2E | Bun-runner (`tests/e2e/`) | pre-push | All pass |
 | G1 Static | Biome + tsc | pre-commit | Zero warnings |
 | G2 Security | gitleaks + osv-scanner | pre-push | Zero findings |
 
