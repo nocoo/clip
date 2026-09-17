@@ -1,105 +1,89 @@
 # clip
 
-Reads `clip.yaml`, generates a human-editable commander TypeScript CLI, and stores API credentials under `~/.clip/<alias>/credentials.json` (mode 0600).
-Profile: cli-library
-Direction: [README.md](README.md). `docs/architecture/01-system-overview.md` omits `demo-app` and still describes old 90% L1. Frameworks must not rewrite this file.
+Generate a readable commander TypeScript CLI from `clip.yaml`, with private local credential storage.
+Profile: cli-library, with a bundled Astro documentation site.
+Direction: [README.md](README.md); architecture docs may describe older coverage/layout. Frameworks must not rewrite this file.
 
 ## Sources of Truth
 
-This file is the **contract**. Hooks, CI, and config are **enforcement**. If they disagree, raise enforcement; never lower this file.
+This file is the contract; hooks, CI and configuration enforce it. Raise weaker enforcement instead of lowering this contract.
 
 | Fact | Where |
 |---|---|
-| Agent handbook | this file |
-| Human docs | README.md, `docs/architecture/*`, `docs/features/*` |
-| Version | root `package.json`; also `packages/cli/package.json` and hardcoded `.version()` in `packages/cli/src/index.ts` |
-| Enforcement | `scripts/hooks/*`, `.github/workflows/ci.yml`, `vitest.config.ts` |
-| Machine rules | global `AGENTS.md`, `rules/git-commit.md` |
-| Accidents | [Retrospective.md](Retrospective.md) |
-| Env files | omit (credentials live in `~/.clip`, never in the repo) |
+| Human docs | [README.md](README.md), `docs/architecture/`, `docs/features/` |
+| Version | Root and `packages/cli/package.json`, plus `.version()` in `packages/cli/src/index.ts` |
+| Enforcement | `scripts/hooks/`, `.github/workflows/ci.yml`, `vitest.config.ts` |
+| Credentials | User-owned `~/.clip/<alias>/credentials.json`, never tracked |
+| Machine rules / accidents | Global `AGENTS.md` and `rules/`; [Retrospective.md](Retrospective.md) |
 
 ## Project Invariants
 
-- Scope is **auth storage** + **yaml→CLI codegen** only. No OpenAPI input, no output formatters, no pagination framework. Generated `templates.ts` output stays human-readable and hand-editable.
-- Auth types: `header` / `browser-login` / `cf-access`. Do not revive `oauth`.
-- Credentials: `~/.clip/<alias>/credentials.json` mode 0600. E2E must use `CLIP_HOME=<tmpdir>` and never touch the human `~/.clip`.
-- Do not silently delete `clip.yaml` fields still used by consumers (grep bogo and others before changing `packages/cli/src/schema/validator.ts`).
-- Hooks path is `git config core.hooksPath scripts/hooks` (`prepare`), not husky.
+- Scope is auth storage and YAML-to-CLI generation. Do not reintroduce OpenAPI input, an output-formatting abstraction or a pagination framework.
+- Auth names are `header`, `browser-login`, `cf-access`; do not revive the misleading `oauth` name.
+- Credential files use mode `0600`. E2E always sets a temporary `CLIP_HOME`, never writes the human's `~/.clip`, and never uses production credentials.
+- Generated `templates.ts` output remains readable and hand-editable. Before removing YAML fields, inspect actual consumers such as Bogo and preserve compatibility.
+- Hooks are installed at `scripts/hooks` by `prepare`; do not replace this with Husky or assume ignored Husky wrappers are the entrypoint.
 
 ## Stack / Layout
 
 | Component | Choice |
 |---|---|
-| Language | TypeScript 7 strict |
-| Package manager | Bun workspaces |
-| Runtime | Bun CLI (`packages/cli`); demo-app / example-api are fixtures |
-| Lint | Biome `check . --error-on-warnings` |
-| Tests | Vitest L1 ≥95% all four; Bun-runner L2 in `tests/e2e/` |
-| Data | none (local credential files only) |
-
-```
-packages/cli           codegen + auth commands
-packages/demo-app      L2 Bookmarks API
-packages/example-api   small Hono fixture
-packages/web           Astro docs site (no L3)
-tests/e2e              real spawn + real HTTP
-```
+| Runtime / install | TypeScript 7, Bun workspaces; CI Bun 1.3.5 |
+| Static / tests | TypeScript, Biome, Vitest/V8 and Bun process/HTTP tests |
+| `packages/cli/` | Generator, schema and auth commands; executes source without a bundle |
+| `packages/demo-app/`, `packages/example-api/` | Local API fixtures |
+| `packages/web/` | Astro documentation site with its own build |
+| `tests/e2e/`, `scripts/` | Real subprocess/HTTP journeys and hooks |
 
 ## Commands
 
+Run each command from the root. No production service or secret is needed. Gitleaks and OSV Scanner are required by pre-push.
+
 ```bash
+bun install --frozen-lockfile
 bun run lint
 bun run typecheck
 bun run test:unit
 bun run test:e2e
+bun run --cwd packages/web build
 bun run quality:full
-cd packages/demo-app && bun run dev
+bun run --cwd packages/demo-app dev
 ```
+
+`test:e2e` uses Bun's runner with file concurrency 1; it owns fixture servers and generated CLI processes. `test:integration` is only an echo placeholder and proves no behavior. The CLI ships source; the Astro site still requires an actual bundle build.
 
 ## Verification
 
-Status: `enforced` | `planned` | `manual` | `N/A`. `enforced` Evidence = hook/CI/config/script.
+6DQ = L1/L2/L3 + G1/G2 + D1. Status: `enforced`, `planned`, `manual`, `N/A`.
 
-Org gaps: index-snapshot pre-commit; stdin-range pre-push; `.skip`/`.only`; gitleaks on pre-commit.
-
-Today: pre-commit lint + typecheck + `test:unit` on the working tree. pre-push `test:e2e` then gitleaks + osv (missing binary = fail). CI bun-quality `@aec4adc1a817c56790d1698329ef9398a15a754a` (v2026.5, bun 1.3.5): unit/lint/typecheck + G2 + L2 `test:e2e`.
-
-| Change | Proof | Status | Evidence |
+| Dimension | Required proof | Status | Current enforcement / gap |
 |---|---|---|---|
-| Logic | L1 vitest ≥95% stmt/branch/func/line | enforced | pre-commit `test:unit`; `vitest.config.ts`; CI |
-| API L2 | real spawn generated CLI + real HTTP | enforced | pre-push `test:e2e`; CI `enable-l2` |
-| UI L3 | — | N/A | `packages/web` has no Playwright |
-| Types / lint | tsc + Biome 0 warning | enforced | pre-commit + CI |
-| G2 secrets | gitleaks | enforced | pre-push + CI bun-quality |
-| G2 deps | osv-scanner `bun.lock` | enforced | pre-push + CI |
-| Bundler | — | N/A | generate writes a project; no ship bundle gate |
-| Docs | numbered doc if behavior changes | manual | human review |
-| Release | version bump | planned | no release script in this repo |
+| L1 logic | Statements, branches, functions and lines each ≥95%; no `.skip` / `.only` | planned | Commit/CI `test:unit` enforces four 95% thresholds; install/test commands, CLI entry and docs-site source are excluded, and skip/focus gate is incomplete |
+| L2 API | Real HTTP over the local fixture/auth endpoint-method surface | planned | Push/CI E2E uses real HTTP; a complete endpoint/method inventory is not enforced |
+| L3 CLI | Generate/install/login/use real CLI processes | enforced | `test:e2e` runs generated commands and browser-login callbacks with real subprocesses |
+| L3 docs UI | Critical docs navigation/browser behavior | planned | Astro site has no browser acceptance runner |
+| G1 static | Strict types and check-only lint, zero errors/warnings | enforced | Commit/CI typecheck and Biome |
+| G2 security | Dependency and secret scans; missing scanner fails | enforced | Pre-push checks tool presence then Gitleaks/OSV on `bun.lock`; CI shared scanners |
+| D1 isolation | Per-run local files/servers and guards before cleanup | planned | Tests allocate temp schema/working/credential directories and random ports; common target/cleanup guards and a docs-browser harness remain incomplete |
+| Build | Bundled Astro docs site | planned | `packages/web` has `build`, but root hooks/CI do not run it |
+| Docs / release | YAML compatibility and synchronized version review | manual | Human review; no release script or CD |
 
-Index-snapshot pre-commit and stdin-range pre-push are planned. `--no-verify` forbidden on commits and branch pushes. Tag-only may skip.
+| Hook | Current behavior | Required follow-up |
+|---|---|---|
+| pre-commit | Working-tree lint, typecheck, coverage | G1+L1 on index snapshot, <30s |
+| pre-push | Serial real E2E, repository Gitleaks, lockfile OSV | Applicable integration+G2 on stdin push refs, <3min |
+
+Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f` with L2 enabled.
 
 ## Resources / Isolation
 
-| Purpose | Port / resource | Isolation |
-|---|---|---|
-| Demo | 3100 `packages/demo-app` | local fixture API |
-| L2 | random port | `startDemoApp()` + temp `CLIP_HOME`; never `~/.clip` |
-
-E2E never uses production credentials.
+Manual demo development uses port 3100. Automated tests allocate random loopback ports and a fresh `CLIP_HOME`, then stop their own processes and delete only their allocated directories. No cloud database, account or remote `-test` deployment is needed.
 
 ## Operations / Release
 
-- No CD. Bump root `package.json`, `packages/cli/package.json`, and `packages/cli/src/index.ts` `.version()` together. Who: npm publish rights if a package is shipped.
-- Live-check: `bun run quality:full`.
+There is no automated release or CD. For an authorized version change, update root/package version and the embedded CLI `.version()` together, then run normal gates and publish only the intended artifact with the maintainer's rights.
+Use `bun run quality:full` for behavioral/security validation and separately build the docs site when its code changes.
 
 ## Retrospective
 
-| Kind | Where |
-|---|---|
-| Accident narrative | [Retrospective.md](Retrospective.md) |
-| Recurring project rule | one line here (cap ~10) |
-| Checkable rule | hook or test |
-
-- Scope is auth + yaml codegen only. No OpenAPI. No `oauth` type name.
-- Generated CLI stays readable; do not magick `templates.ts`.
-- E2E uses temp `CLIP_HOME`. Never `~/.clip`.
+Narratives stay in [Retrospective.md](Retrospective.md); keep only recurring rules here, cross-project lessons in global rules/nmem and deterministic requirements in hooks/tests.
