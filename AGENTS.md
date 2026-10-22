@@ -55,7 +55,7 @@ bun run --cwd packages/demo-app dev
 | pre-commit | Working-tree lint, typecheck, coverage | Unified L1 on an index snapshot, <30s |
 | pre-push | Serial real E2E, repository Gitleaks, lockfile OSV | Applicable integration+G2 on stdin push refs, <3min |
 
-Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f` with L2 enabled.
+Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae` with L2 enabled.
 
 ## Resources and isolation
 
