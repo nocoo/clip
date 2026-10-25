@@ -1,7 +1,7 @@
 {
   "name": "clip",
   "private": true,
-  "version": "1.1.2",
+  "version": "1.1.3",
   "license": "MIT",
   "workspaces": [
     "packages/*"
@@ -18,9 +18,9 @@
     "prepare": "git config core.hooksPath scripts/hooks"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.3",
     "@nocoo/base-cli": "^0.3.0",
-    "@types/bun": "1.4.3",
+    "@types/bun": "1.4.4",
     "@vitest/coverage-v8": "5.0.5",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
@@ -37,6 +37,6 @@
     "svgo": ">=4.1.0",
     "vite": "8.1.6",
     "smol-toml": "^1.9.0",
-    "undici": "^8.10.2"
+    "undici": "^8.12.2"
   }
 }
