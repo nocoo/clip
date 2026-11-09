@@ -41,7 +41,7 @@ bun run --cwd packages/demo-app dev
 
 | Dimension | Required proof | Status | Current enforcement / gap |
 |---|---|---|---|
-| L1 pre-commit quality | Statements, branches, functions and lines each ≥95%; no `.skip`/`.only`; strict types and check-only lint with zero errors/warnings | planned | Commit/CI `test:unit` enforces four 95% thresholds; install/test commands, CLI entry and docs-site source are excluded, and the skip/focus gate is incomplete. Commit/CI typecheck and Biome cover static subchecks; index-snapshot/timing/rejection unverified |
+| L1 pre-commit quality | Statements, branches, functions and lines each ≥95%; no `.skip`/`.only`; strict types and check-only lint with zero errors/warnings | enforced | `scripts/hooks/pre-commit` materialises the index via `git checkout-index`, symlinks installed `node_modules`, rejects staged/worktree `package.json`/`bun.lock` drift, scans staged tests for `.only`/`.skip`, then runs check-only `typecheck`, Biome and `vitest run --coverage` inside the snapshot; any failure blocks the commit. Vitest enforces 95/95/95/95 with documented by-design exclusions; ordinary path target \<30s on warm cache. |
 | L2 API | Real HTTP over the local fixture/auth endpoint-method surface | planned | Push/CI E2E uses real HTTP; a complete endpoint/method inventory is not enforced |
 | L3 CLI | Generate/install/login/use real CLI processes | enforced | `test:e2e` runs generated commands and browser-login callbacks with real subprocesses |
 | L3 docs UI | Critical docs navigation/browser behavior | planned | Astro site has no browser acceptance runner |
@@ -52,7 +52,7 @@ bun run --cwd packages/demo-app dev
 
 | Hook | Current behavior | Required follow-up |
 |---|---|---|
-| pre-commit | Working-tree lint, typecheck, coverage | Unified L1 on an index snapshot, <30s |
+| pre-commit | Index snapshot: typecheck, Biome, coverage, skip/only scan; staged lockfile must match worktree | Maintain \<30s on warm cache; prove rejection when staged tree is broken |
 | pre-push | Serial real E2E, repository Gitleaks, lockfile OSV | Applicable integration+G2 on stdin push refs, <3min |
 
 Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae` with L2 enabled.
