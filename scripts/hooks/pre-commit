@@ -1,9 +1,82 @@
 #!/bin/bash
+# === Quality Gate: pre-commit ===
+# Unified L1 against the Git index snapshot, not the working tree.
 set -e
-echo "🔍 Running pre-commit checks..."
-# G1 — Static analysis
-bun run lint
+command -v git >/dev/null 2>&1 || {
+	echo "pre-commit: git is required" >&2
+	exit 1
+}
+command -v bun >/dev/null 2>&1 || {
+	echo "pre-commit: bun is required" >&2
+	exit 1
+}
+
+snapshot=
+cleanup() {
+	status=$?
+	trap - EXIT INT TERM HUP
+	if [ -n "$snapshot" ]; then
+		rm -rf "$snapshot" || :
+		snapshot=
+	fi
+	exit "$status"
+}
+trap cleanup EXIT
+trap "exit 130" INT
+trap "exit 143" TERM
+trap "exit 129" HUP
+
+echo "🔍 Running pre-commit checks (index snapshot)..."
+
+snapshot=$(mktemp -d "${TMPDIR:-/tmp}/clip-index-XXXXXX")
+git checkout-index --all --prefix="$snapshot/"
+repo=$(git rev-parse --show-toplevel)
+
+if [ ! -d "$repo/node_modules" ]; then
+	echo "pre-commit: node_modules is required (run bun install)" >&2
+	exit 1
+fi
+if [ ! -f "$snapshot/package.json" ] || [ ! -f "$snapshot/bun.lock" ]; then
+	echo "pre-commit: staged package.json and bun.lock are required" >&2
+	exit 1
+fi
+if ! cmp -s "$snapshot/package.json" "$repo/package.json" || ! cmp -s "$snapshot/bun.lock" "$repo/bun.lock"; then
+	echo "pre-commit: staged package.json/bun.lock must match the installed worktree copies" >&2
+	echo "pre-commit: run bun install and stage the updated lockfile if dependencies changed" >&2
+	exit 1
+fi
+
+rm -rf "$snapshot/node_modules"
+sh "$repo/scripts/snapshot-node-modules.sh" "$repo" "$snapshot"
+mkdir -p "$snapshot/node_modules/.vite" "$snapshot/node_modules/.vitest" "$snapshot/.cache"
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+unset GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+export XDG_CACHE_HOME="$snapshot/.cache"
+export XDG_STATE_HOME="$snapshot/.cache"
+PATH="$snapshot/node_modules/.bin:$PATH"
+cd "$snapshot"
+
+if ! grep -Fq -- '--coverage' package.json; then
+	echo "pre-commit: test:unit must run vitest with --coverage" >&2
+	exit 1
+fi
+
+# Reject focused or permanently skipped tests in the staged tree.
+test_files=$(find packages tests -type f \( -name '*.test.ts' -o -name '*.spec.ts' \) 2>/dev/null || true)
+if [ -n "$test_files" ]; then
+	if echo "$test_files" | xargs grep -En '(^|[^.\w])(it|test|describe)\.only\s*\(' 2>/dev/null; then
+		echo "pre-commit: test.only / describe.only is forbidden" >&2
+		exit 1
+	fi
+	if echo "$test_files" | xargs grep -En '(^|[^.\w])(it|test|describe)\.skip\s*\(' 2>/dev/null; then
+		echo "pre-commit: committed test.skip / describe.skip is forbidden" >&2
+		exit 1
+	fi
+fi
+
+start=$SECONDS
 bun run typecheck
-# L1 — Unit tests
+bun run lint
 bun run test:unit
-echo "✅ Pre-commit checks passed"
+elapsed=$((SECONDS - start))
+echo "✅ Pre-commit checks passed (${elapsed}s, index snapshot)"
