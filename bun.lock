@@ -15,7 +15,7 @@
     },
     "packages/cli": {
       "name": "@clip/cli",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "bin": {
         "clip": "src/index.ts",
       },
