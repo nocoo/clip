@@ -55,7 +55,7 @@ bun run --cwd packages/demo-app dev
 | pre-commit | Index snapshot: typecheck, Biome, coverage, skip/only scan; staged lockfile must match worktree | Maintain \<30s on warm cache; prove rejection when staged tree is broken |
 | pre-push | Serial real E2E, repository Gitleaks, lockfile OSV | Applicable integration+G2 on stdin push refs, <3min |
 
-Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae` with L2 enabled.
+Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@1ea10ecab22b72512399485391603fe03a161016` (v2026.12) with strict `slot-status` and L2 enabled.
 
 ## Resources and isolation
 
