@@ -37,25 +37,29 @@ bun run --cwd packages/demo-app dev
 
 ## Testing and quality contract
 
-6DQ keeps its name with unified L1, L2/L3, G2 and D1; the owner merged former G1 into L1 on 2026-09-21. Statuses: `enforced`, `planned`, `manual`, `N/A`.
+Quality follows `system1-quality` (v1.3.0) with 12 canonical slots (`impl`, `todo`, `na`) and `nocoo/base-ci` v2026.15 (`777bbe4f9bacab8a91d8c01974480a6ee23d28e0`) in native mode (`quality-slots.yml`).
 
-| Dimension | Required proof | Status | Current enforcement / gap |
+| Slot | Required proof | Status | Current enforcement / gap |
 |---|---|---|---|
-| L1 pre-commit quality | Statements, branches, functions and lines each ≥95%; no `.skip`/`.only`; strict types and check-only lint with zero errors/warnings | enforced | `scripts/hooks/pre-commit` materialises the index via `git checkout-index`, symlinks installed `node_modules`, rejects staged/worktree `package.json`/`bun.lock` drift, scans staged tests for `.only`/`.skip`, then runs check-only `typecheck`, Biome and `vitest run --coverage` inside the snapshot; any failure blocks the commit. Vitest enforces 95/95/95/95 with documented by-design exclusions; ordinary path target \<30s on warm cache. |
-| L2 API | Real HTTP over the local fixture/auth endpoint-method surface | planned | Push/CI E2E uses real HTTP; a complete endpoint/method inventory is not enforced |
-| L3 CLI | Generate/install/login/use real CLI processes | enforced | `test:e2e` runs generated commands and browser-login callbacks with real subprocesses |
-| L3 docs UI | Critical docs navigation/browser behavior | planned | Astro site has no browser acceptance runner |
-| G2 security | Dependency and secret scans; missing scanner fails | enforced | Pre-push checks tool presence then Gitleaks/OSV on `bun.lock`; CI shared scanners |
-| D1 isolation | Per-run local files/servers and guards before cleanup | planned | Tests allocate temp schema/working/credential directories and random ports; common target/cleanup guards and a docs-browser harness remain incomplete |
-| Build | Bundled Astro docs site | planned | `packages/web` has `build`, but root hooks/CI do not run it |
-| Docs / release | YAML compatibility and synchronized version review | manual | Human review; no release script or CD |
+| S1: Types | Strict TypeScript (`bun run typecheck`) | enforced | `scripts/hooks/pre-commit` index snapshot & CI `s1-types` |
+| S2: Lint | Biome check-only (`bun run lint`), no `.skip`/`.only` | enforced | `scripts/hooks/pre-commit` index snapshot & CI `s2-lint` |
+| S3: Workflow | `actionlint` + 40-char SHA pinning | enforced | CI `s3-workflow` |
+| G1: Secrets | Gitleaks scan (`.gitleaks.toml`) | enforced | `pre-push` & CI `g1-secrets` |
+| G2: Dependencies | `osv-scanner` on `bun.lock` | enforced | `pre-push` & CI `g2-dependencies` |
+| B1: Build | Bundled Astro docs site | planned (`todo`) | `packages/web` has `build`, not yet wired into root CI |
+| L1: Unit | Vitest unit tests ≥95% statements/branches/functions/lines | enforced | `scripts/hooks/pre-commit` (`test:unit`) & CI `l1-unit` |
+| L2: Runtime | Cloudflare Worker / platform runtime bindings | N/A (`na`) | Not a Cloudflare Worker project |
+| L3: Integration | Real HTTP + generated CLI subprocesses (`test:e2e`) | enforced | `pre-push` & CI `l3-integration` |
+| L4: E2E | Browser acceptance runner for Astro docs site | N/A (`na`) | No Playwright browser E2E runner |
+| P1: Package | npm package validation | N/A (`na`) | Root `package.json` is private |
+| Z1: Gate | Aggregate all `impl` slots & SHA consistency | enforced | CI `z1-gate` (`quality / Z1: Gate`) |
 
 | Hook | Current behavior | Required follow-up |
 |---|---|---|
 | pre-commit | Index snapshot: typecheck, Biome, coverage, skip/only scan; staged lockfile must match worktree | Maintain \<30s on warm cache; prove rejection when staged tree is broken |
 | pre-push | Serial real E2E, repository Gitleaks, lockfile OSV | Applicable integration+G2 on stdin push refs, <3min |
 
-Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI uses `base-ci/quality.yml@1ea10ecab22b72512399485391603fe03a161016` (v2026.12) with strict `slot-status` and L2 enabled.
+Hooks are check-only; never use `--no-verify` on commits or branch pushes. CI runs `.github/workflows/ci.yml` -> `./.github/workflows/quality-slots.yml` (`v2026.15` composite actions), gated on `quality / Z1: Gate`.
 
 ## Resources and isolation
 
