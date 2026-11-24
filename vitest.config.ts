@@ -2,11 +2,9 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    projects: [
-      "packages/cli/vitest.config.ts",
-      "packages/example-api/vitest.config.ts",
-      "packages/demo-app/vitest.config.ts",
-    ],
+    allowOnly: false,
+    passWithNoTests: false,
+    projects: ["packages/cli/vitest.config.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
@@ -17,7 +15,7 @@ export default defineConfig({
         branches: 95,
         statements: 95,
       },
-      include: ["packages/*/src/**/*.ts"],
+      include: ["packages/cli/src/**/*.ts"],
       exclude: [
         "**/node_modules/**",
         "**/dist/**",
@@ -28,7 +26,9 @@ export default defineConfig({
         "packages/cli/src/commands/install.ts",
         "packages/cli/src/commands/test.ts",
         "packages/cli/src/schema/types.ts",
-        "packages/example-api/src/index.ts",
+        // Local Hono E2E fixture apps — exercised by test:e2e
+        "packages/example-api/**",
+        "packages/demo-app/**",
         "packages/web/**",
       ],
     },

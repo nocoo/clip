@@ -41,7 +41,7 @@ bun run --cwd packages/demo-app dev
 Follows `system1-quality`; CI runs `.github/workflows/ci.yml` -> `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
 - **Enforced in CI**: `S1` typecheck, `S2` Biome, `S3` actionlint + 40-char SHA pins, `G1` Gitleaks (`.gitleaks.toml`), `G2` OSV Scanner (`bun.lock`), `L1` Vitest coverage, `L3` `test:e2e`, `Z1: Gate`.
-- **Coverage boundary**: `L1` enforces >= 95% across `packages/cli`, `packages/example-api`, and `packages/demo-app` (`packages/web/**` and thin CLI entrypoints excluded in `vitest.config.ts`).
+- **Coverage boundary**: `L1` enforces >= 95% on `packages/cli` (`packages/demo-app/**`, `packages/example-api/**` E2E fixtures, `packages/web/**`, and thin CLI entrypoints excluded in `vitest.config.ts`).
 - **Exceptions / gaps**: `B1 Build` is `planned` (`packages/web` build not yet wired into CI); `L2 Runtime` (`N/A`, non-Worker), `L4 E2E` (`N/A`, no Playwright runner), `P1 Package` (`N/A`, private packages).
 - **Pre-commit**: Installed via `bun run prepare` (`scripts/hooks/`, check-only; no `--no-verify`). Checks staged index snapshot (lockfile matches worktree): `S1`, `S2` + `.only`/`.skip`, `L1` (< 30s warm).
 - **Pre-push**: Runs serial `test:e2e` (`L3`), repo `gitleaks` (`G1`), and `osv-scanner --lockfile bun.lock` (`G2`); scoping to stdin push refs is `planned` (target < 3m).

@@ -719,3 +719,79 @@ describe("generateTests — cf-access schemas", () => {
     );
   });
 });
+
+describe("generateTests — edge branches", () => {
+  it("handles CRUD sequence with bodyless PATCH query and omitted GET/DELETE", async () => {
+    const patchOnlySchema: ClipSchema = {
+      ...SAMPLE_SCHEMA,
+      endpoints: [
+        {
+          name: "create",
+          method: "POST",
+          path: "/items",
+          description: "Create item",
+          params: { body: { name: { type: "string", required: true } } },
+        },
+        {
+          name: "touch",
+          method: "PATCH",
+          path: "/items/:id",
+          description: "Touch item",
+          params: {
+            path: { id: { type: "string", required: true } },
+            query: { dryRun: { type: "boolean" } },
+          },
+        },
+      ],
+    };
+
+    const outputDir = join(tempDir, "patch-bodyless-crud");
+    await generateTests(patchOnlySchema, outputDir);
+
+    const crudContent = await readFile(
+      join(outputDir, "tests/crud-sequence.test.ts"),
+      "utf-8",
+    );
+
+    expect(crudContent).toContain("dryRun=true");
+    expect(crudContent).toContain('method: "PATCH"');
+    expect(crudContent).not.toContain("// Get");
+    expect(crudContent).not.toContain("// Delete");
+  });
+
+  it("validates nested object properties in response shapes as object", async () => {
+    const nestedSchema: ClipSchema = {
+      ...SAMPLE_SCHEMA,
+      endpoints: [
+        {
+          name: "detail",
+          method: "GET",
+          path: "/summary",
+          description: "Summary",
+          response: {
+            type: "object",
+            properties: {
+              id: "string",
+              meta: {
+                type: "object",
+                properties: { tag: "string" },
+              },
+            },
+          },
+        },
+      ],
+    };
+
+    const outputDir = join(tempDir, "nested-response-shape");
+    await generateTests(nestedSchema, outputDir);
+
+    const detailContent = await readFile(
+      join(outputDir, "tests/detail.test.ts"),
+      "utf-8",
+    );
+
+    expect(detailContent).toContain('expect(typeof body).toBe("object");');
+    expect(detailContent).toContain('expect(typeof body.id).toBe("string");');
+    expect(detailContent).toContain('expect(typeof body.meta).toBe("object");');
+  });
+});
