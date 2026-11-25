@@ -15,7 +15,7 @@ Run from root with Bun workspaces and TypeScript 7 (CI pins Bun `1.3.5`). No pro
 bun install --frozen-lockfile
 bun run typecheck                 # S1
 bun run lint                      # S2 check-only, 0 warnings
-bun run test:unit                 # L1 Vitest >= 95% (statements/branches/functions/lines)
+bun run test:unit                 # L1 Vitest >= 80% (statements/branches/functions/lines)
 bun run test:e2e                  # L3 Bun runner (--concurrency=1), fixture server + generated CLI
 bun run --cwd packages/web build  # B1 Astro docs site bundle
 bun run quality:full              # lint + typecheck + test:unit + test:e2e + gitleaks + osv-scanner
@@ -40,9 +40,9 @@ bun run --cwd packages/demo-app dev
 
 Follows `system1-quality`; CI runs `.github/workflows/ci.yml` -> `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
-- **Enforced in CI**: `S1` typecheck, `S2` Biome, `S3` actionlint + 40-char SHA pins, `G1` Gitleaks (`.gitleaks.toml`), `G2` OSV Scanner (`bun.lock`), `L1` Vitest coverage, `L3` `test:e2e`, `Z1: Gate`.
-- **Coverage boundary**: `L1` enforces >= 95% on `packages/cli` (`packages/demo-app/**`, `packages/example-api/**` E2E fixtures, `packages/web/**`, and thin CLI entrypoints excluded in `vitest.config.ts`).
-- **Exceptions / gaps**: `B1 Build` is `planned` (`packages/web` build not yet wired into CI); `L2 Runtime` (`N/A`, non-Worker), `L4 E2E` (`N/A`, no Playwright runner), `P1 Package` (`N/A`, private packages).
+- **Enforced in CI**: `S1` typecheck, `S2` Biome, `S3` actionlint + 40-char SHA pins, `G1` Gitleaks (`.gitleaks.toml`), `G2` OSV Scanner (`bun.lock`), `B1` Astro docs build (`packages/web`), `L1` Vitest coverage, `L3` `test:e2e`, `Z1: Gate`.
+- **Coverage boundary**: `L1` enforces >= 80% on `packages/cli` (`packages/demo-app/**`, `packages/example-api/**` E2E fixtures, `packages/web/**`, and thin CLI entrypoints excluded in `vitest.config.ts`).
+- **Exceptions / gaps**: `L2 Runtime` (`N/A`, non-Worker), `L4 E2E` (`N/A`, no Playwright runner), `P1 Package` (`N/A`, private packages).
 - **Pre-commit**: Installed via `bun run prepare` (`scripts/hooks/`, check-only; no `--no-verify`). Checks staged index snapshot (lockfile matches worktree): `S1`, `S2` + `.only`/`.skip`, `L1` (< 30s warm).
 - **Pre-push**: Runs serial `test:e2e` (`L3`), repo `gitleaks` (`G1`), and `osv-scanner --lockfile bun.lock` (`G2`); scoping to stdin push refs is `planned` (target < 3m).
 
