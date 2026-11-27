@@ -38,7 +38,7 @@ bun run --cwd packages/demo-app dev
 
 ## Quality & Local Gates
 
-Follows `system1-quality`; CI runs `.github/workflows/ci.yml` -> `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
+Follows `system1-quality`; CI runs `.github/workflows/pipeline.yml` -> `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main`, pinned `base-ci` `v2026.24`), with no CD workflow (local CLI/tool only). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
 - **Enforced in CI**: `S1` typecheck, `S2` Biome, `S3` actionlint + 40-char SHA pins, `G1` Gitleaks (`.gitleaks.toml`), `G2` OSV Scanner (`bun.lock`), `B1` Astro docs build (`packages/web`), `L1` Vitest coverage, `L3` `test:e2e`, `Z1: Gate`.
 - **Coverage boundary**: `L1` enforces >= 80% on `packages/cli` (`packages/demo-app/**`, `packages/example-api/**` E2E fixtures, `packages/web/**`, and thin CLI entrypoints excluded in `vitest.config.ts`).
